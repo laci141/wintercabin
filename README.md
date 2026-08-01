@@ -1,17 +1,42 @@
 # Winter Cabin
 
-A full-screen animated winter scene: a snowy mountain landscape with falling snow,
-spruce trees and a log cabin, drawn entirely with code on an HTML canvas.
+Four full-screen animated winter scenes: snowy mountain landscapes with falling
+snow, spruce trees, lakes and log cabins, drawn entirely with code on an HTML
+canvas — with a fully procedural ambient soundtrack.
 
-Open `index.html` in a browser. No build step, no image files, no external
-libraries — one self-contained file.
+Open `index.html` in a browser. No build step, no image files, no audio files,
+no external libraries — one self-contained file.
 
-## The scene
+## The four scenes
 
-Painted back to front: a day/night-driven sky with stars and a haloed moon, two
-overlapping jagged mountain ridges, a blurred distant tree line, procedurally
-drawn mid-ground spruces, a log cabin with warm glowing windows, and smooth
-foreground snowdrifts.
+- **Valley** — a log cabin on a slope with a snow-covered fence, mid-ground
+  spruces and two mountain ridges.
+- **Starlit** — a cabin nestled deep in a dense forest under a strong Milky Way
+  band with dust lanes and hundreds of pinpoint stars.
+- **Lake** — steep rocky peaks with snowed upper slopes above a frozen mountain
+  lake; the mountains, tree line and shore trees mirror in the water, sliced
+  with a slow sine so the reflection shimmers, and at night a moonlight lane
+  ripples across it.
+- **Frosted** — pale rime-covered trees around a small pond, heavy valley mist,
+  and a distant cottage whose warm windows shimmer in the water.
+
+Every scene runs the same engine: the full day/night cycle, three-layer snow,
+wind gusts, accumulation and click interactions. Drifting clouds are tinted by
+the time of day and veil the moon as they pass.
+
+## Sound
+
+Everything is synthesized live with the Web Audio API — no audio files:
+
+- **Wind** — looped pink-ish noise through a swept band-pass filter; its gain
+  and frequency follow the actual wind simulation, so gusts audibly howl.
+- **Fire** — high-passed noise driven by tiny random gain spikes: a fireplace
+  crackle, present only in scenes with a cabin.
+- **Ambience** — a very quiet detuned warm chord that breathes, a touch louder
+  at night.
+
+A master volume slider plus individual toggles; sound starts only when switched
+on (browser autoplay rules).
 
 ## Falling snow
 
