@@ -1,0 +1,2050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Winter Cabin</title>
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b1020; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  /* explicit width/height: canvas is a replaced element, so `inset:0` alone
+     would fall back to its intrinsic (attribute) size at devicePixelRatio > 1 */
+  #scene { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+
+  /* White fade-in on load + soft flash on scene switch */
+  #fade { position: fixed; inset: 0; background: #ffffff; opacity: 1; pointer-events: none;
+          transition: opacity 2s ease; z-index: 30; }
+  #fade.gone { opacity: 0; }
+  #fade.switching { transition: opacity .3s ease; opacity: .92; }
+
+  /* Glass control panel */
+  .glass-panel {
+    position: fixed; left: 20px; bottom: 20px; width: 252px; z-index: 20;
+    background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 20px;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px); /* Safari — required */
+    box-shadow: 0 18px 50px -18px rgba(0,0,0,.75);
+    padding: 16px 16px 12px;
+    color: #eef3fb;
+    user-select: none;
+  }
+  .glass-panel h1 { margin: 0 0 9px; font-size: 15px; font-weight: 600; letter-spacing: .04em; }
+  .glass-panel h1 span { opacity: .55; font-weight: 400; font-size: 11px; margin-left: 6px; }
+  .ctl { margin-bottom: 10px; }
+  .ctl label { display: flex; justify-content: space-between; align-items: center;
+               font-size: 11.5px; opacity: .85; margin-bottom: 4px; letter-spacing: .03em; }
+  .ctl input[type="range"] { width: 100%; accent-color: #ffb45c; height: 18px; margin: 0; cursor: pointer; }
+  .seg { display: flex; gap: 4px; }
+  .seg.stack { margin-top: 5px; }
+  .seg button, #resetBtn {
+    flex: 1; font-size: 10.5px; padding: 5px 0; border-radius: 9px; cursor: pointer;
+    color: #eef3fb; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+    transition: background .2s, border-color .2s;
+    font-family: inherit;
+  }
+  .seg button:hover, #resetBtn:hover { background: rgba(255,255,255,.16); }
+  .seg button.on { background: rgba(255,180,92,.30); border-color: rgba(255,180,92,.55); }
+  .toggle { display: flex; align-items: center; gap: 5px; font-size: 11px; cursor: pointer; opacity: .9; }
+  .toggle input { accent-color: #ffb45c; margin: 0; cursor: pointer; }
+  #resetBtn { width: 100%; padding: 6px 0; font-size: 11px; }
+  .hint { font-size: 10.5px; opacity: .55; margin: 9px 0 0; line-height: 1.45; }
+  #handle { display: none; }
+
+  /* Mobile: collapse into a bottom drawer, lighter blur */
+  @media (max-width: 700px) {
+    .glass-panel {
+      left: 0; right: 0; bottom: 0; width: auto;
+      border-radius: 18px 18px 0 0;
+      border-left: none; border-right: none; border-bottom: none;
+      backdrop-filter: blur(11px);
+      -webkit-backdrop-filter: blur(11px);
+      box-shadow: 0 -12px 32px -14px rgba(0,0,0,.7);
+      padding: 0 16px 12px;
+      transform: translateY(calc(100% - 42px));
+      transition: transform .35s cubic-bezier(.4, 0, .2, 1);
+      max-height: 72vh;
+    }
+    .glass-panel.open { transform: none; overflow-y: auto; }
+    #handle {
+      display: block; width: 100%; background: none; border: none; color: #eef3fb;
+      font: 600 13px/42px inherit; letter-spacing: .04em; cursor: pointer; padding: 0;
+      font-family: inherit;
+    }
+    #handle::after { content: " ▴"; opacity: .6; }
+    .glass-panel.open #handle::after { content: " ▾"; }
+    .glass-panel h1 { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div class="glass-panel" id="panel">
+  <button id="handle" aria-label="Toggle controls">Winter Cabin</button>
+  <h1>Winter Cabin <span>controls</span></h1>
+
+  <div class="ctl">
+    <label><span>Scene</span></label>
+    <div class="seg" id="sceneSeg">
+      <button data-s="0" class="on">Valley</button>
+      <button data-s="1">Starlit</button>
+      <button data-s="2">Lake</button>
+      <button data-s="3">Frosted</button>
+    </div>
+  </div>
+
+  <div class="ctl">
+    <label for="snowRange"><span>Snowfall</span><span id="snowLabel">Steady</span></label>
+    <input type="range" id="snowRange" min="0" max="1" step="0.01" value="0.5">
+  </div>
+
+  <div class="ctl">
+    <label for="timeRange"><span>Time of day</span>
+      <span class="toggle"><input type="checkbox" id="autoTime" checked> Auto</span>
+    </label>
+    <input type="range" id="timeRange" min="0" max="1" step="0.001" value="0.04">
+  </div>
+
+  <div class="ctl">
+    <label><span>Wind</span></label>
+    <div class="seg" id="windSeg">
+      <button data-w="calm">Calm</button>
+      <button data-w="breezy" class="on">Breezy</button>
+      <button data-w="stormy">Stormy</button>
+    </div>
+  </div>
+
+  <div class="ctl">
+    <label for="volRange"><span>Sound</span>
+      <span class="toggle"><input type="checkbox" id="soundOn"> On</span>
+    </label>
+    <input type="range" id="volRange" min="0" max="1" step="0.01" value="0.6">
+    <div class="seg stack" id="audSeg">
+      <button data-a="wind" class="on">Wind</button>
+      <button data-a="fire" class="on">Fire</button>
+      <button data-a="pad" class="on">Ambience</button>
+    </div>
+  </div>
+
+  <button id="resetBtn">Reset snow</button>
+  <p class="hint">Click a tree or the cabin roof to shake the snow off.</p>
+</div>
+
+<div id="fade"></div>
+
+<script>
+(function () {
+'use strict';
+
+/* ============================== utilities ============================== */
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ====== photographic rendering system ====== */
+let photoBG = null, photoFO = null, photoNE = null;
+let bgCtx = null, foCtx = null, neCtx = null;
+let brushShapes = [];
+let brushTintCache = new Map();
+let dabRng = mulberry32(1);
+let SUNX = 0, SUNY = 0;
+
+function initPhotoBrush() {
+  brushShapes = [];
+  for (let s = 0; s < 3; s++) {
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 48;
+    const g = c.getContext('2d');
+    const rng = mulberry32(500 + s);
+    for (let i = 0; i < 5; i++) {
+      const x = 22 + rng()*20, y = 16 + rng()*16, r = 12 + rng()*14;
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, `rgba(255,255,255,${0.7 + rng()*0.3})`);
+      gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr;
+      g.fillRect(x-r, y-r, r*2, r*2);
+    }
+    brushShapes.push(c);
+  }
+}
+
+function getBrushTinted(si, col) {
+  const key = si + '|' + col[0] + ',' + col[1] + ',' + col[2];
+  let b = brushTintCache.get(key);
+  if (!b) {
+    b = document.createElement('canvas');
+    b.width = 64; b.height = 48;
+    const g = b.getContext('2d');
+    g.drawImage(brushShapes[si], 0, 0);
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = rgb(col);
+    g.fillRect(0, 0, 64, 48);
+    brushTintCache.set(key, b);
+  }
+  return b;
+}
+
+function dab(g, x, y, w, h, rot, col, al) {
+  const b = getBrushTinted((dabRng()*3)|0, col);
+  g.save();
+  g.translate(x, y);
+  g.rotate(rot);
+  g.globalAlpha = al;
+  g.drawImage(b, -w/2, -h/2, w, h);
+  g.restore();
+}
+
+const pick = (rng, arr) => arr[(rng()*arr.length)|0];
+
+function paintSpruce(g, cx, baseY, h, seed, hazeF, L, accum, frost, litDir) {
+  const rng = mulberry32(seed);
+  const topY = baseY - h;
+  const maxR = h*0.27;
+  const lit = litDir || (Math.sign(SUNX - cx) || 1);
+  const nL = isMobile ? 16 : 26;
+  const acc = accum === undefined ? 1 : clamp(accum, 0, 1);
+  // trunk showing between the lowest branches
+  const tw = Math.max(2.5, h*0.022);
+  g.fillStyle = frost ? '#5a5148' : '#3a2a1d';
+  g.fillRect(cx - tw/2, baseY - h*0.16, tw, h*0.16);
+  // dark silhouette mass first
+  for (let i = 0; i < nL; i++) {
+    const t = i/(nL-1);
+    const y = topY + h*0.05 + h*0.88*Math.pow(t, 1.06);
+    const rB = maxR*(0.08 + 0.92*Math.pow(t, 0.94));
+    for (const side of [-1, 1]) {
+      const r = rB*(0.7 + rng()*0.45);
+      const droop = 0.15 + t*0.45;
+      const nD = 3 + (r/10|0);
+      for (let k = 0; k < nD; k++) {
+        const s = 0.15 + (k/nD)*0.85 + rng()*0.1;
+        const px = cx + side*r*s;
+        const py = y + r*droop*s*s + (rng()-0.5)*3;
+        let col = mixC(pick(rng, L.tree), L.haze, hazeF);
+        if (frost) col = mixC(col, [172, 190, 210], 0.5);
+        dab(g, px, py, 12 + r*0.28 + rng()*7, 7 + rng()*6,
+            side*(0.25 + s*0.4) + (rng()-0.5)*0.2, col, 0.5 + rng()*0.4);
+      }
+    }
+  }
+  // snow load
+  for (let i = 0; i < nL; i++) {
+    const t = i/(nL-1);
+    const y = topY + h*0.05 + h*0.88*Math.pow(t, 1.06);
+    const rB = maxR*(0.08 + 0.92*Math.pow(t, 0.94));
+    for (const side of [-1, 1]) {
+      if (rng() < 0.16 + (1 - acc)*0.55) continue;   // thin cover when freshly shaken
+      const r = rB*(0.7 + rng()*0.4);
+      const droop = 0.15 + t*0.45;
+      const facing = side === lit;
+      const nS = 2 + (r/16|0);
+      for (let k = 0; k < nS; k++) {
+        const s = 0.3 + (k/(nS||1))*0.55 + rng()*0.12;
+        const px = cx + side*r*s;
+        const py = y + r*droop*s*s - 2 + (rng()-0.5)*2;
+        const base = facing ? pick(rng, L.snowLit) : pick(rng, L.snowMid);
+        const col = mixC(base, L.haze, hazeF*0.6);
+        dab(g, px, py, (11 + r*0.34)*(0.55 + 0.45*acc), (6 + rng()*5 + t*3)*(0.5 + 0.5*acc),
+            side*(0.22 + s*0.42), col, (0.55 + rng()*0.4)*(0.4 + 0.6*acc));
+        if (rng() < 0.5) {
+          dab(g, px + side*2, py + 5 + rng()*3, 12 + r*0.3, 4 + rng()*3,
+              side*(0.22 + s*0.42), mixC(pick(rng, L.snowShd), L.haze, hazeF*0.5), 0.30 + rng()*0.2);
+        }
+        if (facing && rng() < 0.55) {
+          dab(g, px + lit*3, py - 3 - rng()*2, 10 + r*0.22, 3.5 + rng()*2.5,
+              side*(0.2 + s*0.4), mixC(pick(rng, L.snowLit), L.sunGlow, 0.45), 0.4 + rng()*0.3);
+        }
+      }
+    }
+  }
+  dab(g, cx, topY + h*0.02, (12 + h*0.02)*(0.5 + 0.5*acc), 8*(0.5 + 0.5*acc), 0, pick(rng, L.snowMid), 0.9*acc);
+  dab(g, cx + lit*2, topY + h*0.013, 8*(0.5 + 0.5*acc), 5, 0, mixC(L.snowLit[0], L.sunGlow, 0.4), 0.7*acc);
+}
+const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
+const lerp = (a, b, f) => a + (b - a) * f;
+const smooth = f => f * f * (3 - 2 * f);
+function mixC(a, b, f) {
+  return [lerp(a[0], b[0], f) | 0, lerp(a[1], b[1], f) | 0, lerp(a[2], b[2], f) | 0];
+}
+const rgb = (c, a) => a === undefined ? `rgb(${c[0]},${c[1]},${c[2]})` : `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+/* ============================== scenes ============================== */
+
+const SCENES = [
+  { name: 'Valley', clouds: 0.45, galaxy: 0.30, mist: 0.35, rocky: 0, frost: 0,
+    cabin: { sc: 1.0, cx: 0.64, by: 0.795, fence: true, pool: true },
+    lake: null, trees: { n: 7, x: 'avoid', d: [0.66, 0.80], h: 1.0 }, driftBase: 0.905 },
+  { name: 'Starlit', clouds: 0.12, galaxy: 1.0, mist: 0.22, rocky: 0, frost: 0,
+    cabin: { sc: 0.92, cx: 0.42, by: 0.775, fence: false, pool: true },
+    lake: null, trees: { n: 11, x: 'any', d: [0.62, 0.86], h: 1.12 }, driftBase: 0.905 },
+  { name: 'Lake', clouds: 0.75, galaxy: 0.45, mist: 0.50, rocky: 1, frost: 0,
+    cabin: null, lake: { top: 0.665, bot: 0.815 },
+    trees: { n: 6, x: 'shores', d: [0.60, 0.88], h: 1.05 }, driftBase: 0.925 },
+  { name: 'Frosted', clouds: 0.40, galaxy: 0.15, mist: 0.90, rocky: 0, frost: 1,
+    cabin: { sc: 0.55, cx: 0.60, by: 0.660, fence: false, pool: false },
+    lake: { top: 0.705, bot: 0.790 },
+    trees: { n: 9, x: 'ring', d: [0.62, 0.86], h: 1.0 }, driftBase: 0.915 }
+];
+let sceneIdx = 0, SC = SCENES[0];
+
+/* ============================== state ============================== */
+
+const canvas = document.getElementById('scene');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, dpr = 1, isMobile = false;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let simT = 0;
+let cycleT = 0.04;
+let autoCycle = true;
+const CYCLE_SECONDS = 90;
+
+let intensity = 0.5;
+let windMode = 'breezy';
+let melting = false;
+
+// wind / gusts
+let wind = 0, gustEnv = 0, gustDir = 1, gustAmp = 1;
+let gustState = 'idle', gustClock = 0, nextGust = 6;
+const WIND_CFG = { calm: { base: 0.02, gust: 0.30 }, breezy: { base: 0.14, gust: 0.62 }, stormy: { base: 0.40, gust: 1.05 } };
+
+// day/night key stops
+const STOPS = [
+  { t: 0.00, top: [64, 86, 138],  mid: [233, 158, 106], hor: [255, 214, 158], tint: [255, 246, 238], stars: 0.00, moon: 0.05, night: 0.10, golden: 1.00 },
+  { t: 0.16, top: [30, 38, 82],   mid: [64, 78, 134],   hor: [150, 124, 150], tint: [212, 216, 240], stars: 0.45, moon: 0.55, night: 0.55, golden: 0.25 },
+  { t: 0.34, top: [7, 11, 30],    mid: [15, 23, 52],    hor: [32, 44, 82],    tint: [128, 148, 205], stars: 1.00, moon: 1.00, night: 1.00, golden: 0.00 },
+  { t: 0.62, top: [7, 11, 30],    mid: [15, 23, 52],    hor: [32, 44, 82],    tint: [128, 148, 205], stars: 1.00, moon: 1.00, night: 1.00, golden: 0.00 },
+  { t: 0.80, top: [44, 44, 88],   mid: [120, 86, 124],  hor: [228, 156, 142], tint: [228, 214, 230], stars: 0.30, moon: 0.40, night: 0.50, golden: 0.35 },
+  { t: 0.94, top: [92, 104, 156], mid: [238, 176, 142], hor: [255, 224, 184], tint: [255, 242, 236], stars: 0.00, moon: 0.08, night: 0.12, golden: 0.85 }
+];
+function evalCycle(u) {
+  u = ((u % 1) + 1) % 1;
+  let i = STOPS.length - 1;
+  for (let k = 0; k < STOPS.length - 1; k++) if (u >= STOPS[k].t && u < STOPS[k + 1].t) { i = k; break; }
+  const a = STOPS[i], b = STOPS[(i + 1) % STOPS.length];
+  const span = (i === STOPS.length - 1 ? 1 + STOPS[0].t : b.t) - a.t;
+  const f = smooth(clamp((u - a.t) / span, 0, 1));
+  return {
+    top: mixC(a.top, b.top, f), mid: mixC(a.mid, b.mid, f), hor: mixC(a.hor, b.hor, f),
+    tint: mixC(a.tint, b.tint, f),
+    stars: lerp(a.stars, b.stars, f), moon: lerp(a.moon, b.moon, f),
+    night: lerp(a.night, b.night, f), golden: lerp(a.golden, b.golden, f)
+  };
+}
+
+/* ============================== snowflakes (flat typed arrays) ============================== */
+
+const MAXF = 820;
+const fx = new Float32Array(MAXF), fy = new Float32Array(MAXF), fs = new Float32Array(MAXF),
+      fv = new Float32Array(MAXF), fp = new Float32Array(MAXF), fa = new Float32Array(MAXF),
+      fo = new Float32Array(MAXF);
+const fl = new Uint8Array(MAXF);
+let activeFlakes = 0;
+
+const FLAYER = [
+  { s: [1.0, 1.5], v: [16, 30],  amp: [2, 6],   al: [0.35, 0.55], freq: 0.7 },
+  { s: [2.0, 3.0], v: [42, 70],  amp: [8, 18],  al: [0.55, 0.80], freq: 0.9 },
+  { s: [4.0, 6.0], v: [85, 140], amp: [16, 32], al: [0.50, 0.80], freq: 1.15 }
+];
+function spawnFlake(i, anywhere) {
+  const r = Math.random();
+  const L = r < 0.45 ? 0 : (r < 0.80 ? 1 : 2);
+  const P = FLAYER[L];
+  fl[i] = L;
+  fx[i] = Math.random() * (W + 80) - 40;
+  fy[i] = anywhere ? Math.random() * H : -10 - Math.random() * 40;
+  fs[i] = lerp(P.s[0], P.s[1], Math.random());
+  fv[i] = lerp(P.v[0], P.v[1], Math.random());
+  fp[i] = Math.random() * Math.PI * 2;
+  fa[i] = lerp(P.amp[0], P.amp[1], Math.random());
+  fo[i] = lerp(P.al[0], P.al[1], Math.random());
+}
+function targetFlakeCount() {
+  if (reduceMotion) return 0;
+  const n = Math.round(140 + intensity * 560);
+  return Math.min(MAXF, Math.round(n * (isMobile ? 0.45 : 1)));
+}
+function setActiveFlakes(n) {
+  if (n > activeFlakes) for (let i = activeFlakes; i < n; i++) spawnFlake(i, true);
+  activeFlakes = n;
+}
+
+/* ============================== world geometry ============================== */
+
+const HN = 160;
+const baseYArr = new Float32Array(HN);
+const accumPx = new Float32Array(HN);
+let maxAccum = 60;
+
+function surfaceY(x) {
+  const f = clamp(x / W, 0, 1) * (HN - 1);
+  const i = f | 0, fr = f - i;
+  const a = baseYArr[i] - accumPx[i];
+  const b = baseYArr[Math.min(i + 1, HN - 1)] - accumPx[Math.min(i + 1, HN - 1)];
+  return lerp(a, b, fr);
+}
+function buildHeightmap() {
+  const flat = SC.lake ? 0.55 : 1;   // lake scenes keep the shore low so the water shows
+  const mounds = [
+    { c: 0.14, a: 0.105 * flat, w: 0.17 }, { c: 0.52, a: 0.070 * flat, w: 0.21 }, { c: 0.88, a: 0.115 * flat, w: 0.16 }
+  ];
+  for (let i = 0; i < HN; i++) {
+    const x = i / (HN - 1);
+    let y = SC.driftBase;
+    for (const m of mounds) {
+      const d = (x - m.c) / m.w;
+      y -= m.a * Math.exp(-d * d);
+    }
+    y -= 0.006 * Math.sin(x * 43 + 1.7) + 0.004 * Math.sin(x * 91 + 0.4);
+    baseYArr[i] = y * H;
+  }
+  maxAccum = H * 0.065;
+}
+
+let roofAccum = 0.35, fenceAccum = 0.35;
+const ACCUM_RATE = 1 / 150;
+
+let trees = [];
+let cabin = null;
+let stars = [];
+let sparkles = [];
+let clouds = [];
+let drawList = [];       // trees + cabin + lake, painter-sorted
+const smoke = [];
+const particles = [];
+let lakeGeom = null;     // {top, bot} in px
+let reflC = null;        // lake reflection snapshot (1x resolution → natural shimmer)
+
+function buildStars() {
+  const rng = mulberry32(999);
+  stars = [];
+  for (let i = 0; i < 150; i++) {
+    stars.push({
+      x: rng() * W, y: rng() * H * 0.52,
+      r: 0.5 + rng() * 1.1, ph: rng() * Math.PI * 2, sp: 0.3 + rng() * 0.8,
+      a: 0.4 + rng() * 0.6
+    });
+  }
+}
+
+function buildClouds() {
+  const rng = mulberry32(808 + sceneIdx);
+  clouds = [];
+  const n = Math.round(2 + SC.clouds * 6);
+  for (let i = 0; i < n; i++) {
+    clouds.push({
+      sp: i % 3,
+      x: rng() * (W + 300) - 150,
+      y: H * (0.04 + rng() * 0.30),
+      s: 0.8 + rng() * 1.6,
+      v: 3 + rng() * 9,
+      a: 0.45 + rng() * 0.4
+    });
+  }
+}
+
+function buildTrees() {
+  const rng = mulberry32(20261 + sceneIdx * 71);
+  trees = [];
+  const T = SC.trees;
+  const n = T.n + (rng() * 2 | 0);
+  for (let i = 0; i < n; i++) {
+    let x = W * (0.04 + 0.92 * rng());
+    const depth = rng();
+    let baseY = H * lerp(T.d[0], T.d[1], depth);
+    if (T.x === 'avoid' && x > W * 0.52 && x < W * 0.80) {
+      x = x < W * 0.66 ? x - W * 0.30 : x + W * 0.16;
+    } else if (T.x === 'shores') {
+      x = rng() < 0.5 ? W * (0.02 + 0.24 * rng()) : W * (0.74 + 0.24 * rng());
+    } else if (T.x === 'ring' && baseY < H * 0.74 && x > W * 0.42 && x < W * 0.78) {
+      x = x < W * 0.60 ? x - W * 0.30 : x + W * 0.20; // keep the far cottage visible
+    }
+    x = clamp(x, W * 0.03, W * 0.96);
+    if (SC.lake) { // never stand a tree in the water
+      const t0 = H * SC.lake.top - 8, t1 = H * SC.lake.bot + H * 0.02;
+      if (baseY > t0 && baseY < t1) baseY = t1 + (t1 - t0) * rng() * 0.4 + 4;
+    }
+    const h = H * (0.13 + 0.17 * depth) * (0.85 + rng() * 0.3) * T.h;
+    trees.push({
+      x, baseY, h, w: h * (0.44 + rng() * 0.16),
+      tiers: 5 + (rng() * 3 | 0),
+      seed: (rng() * 1e9) | 0,
+      flex: 0.7 + rng() * 0.6,
+      accum: reduceMotion || SC.frost ? 1 : 0.35,
+      angle: 0, vel: 0,
+      sprite: null, ax: 0, ay: 0, sw: 0, sh: 0
+    });
+  }
+  trees.sort((a, b) => a.baseY - b.baseY);
+}
+
+function buildCabin() {
+  if (!SC.cabin) { cabin = null; return; }
+  const C = SC.cabin;
+  const s = clamp(W / 1400, 0.55, 1.1) * C.sc;
+  const cx = W * C.cx;
+  const baseY = H * C.by;
+  const bw = 205 * s, bh = 112 * s;
+  const bodyTop = baseY - bh;
+  const roofTop = bodyTop - 88 * s;
+  const eave = 26 * s;
+  // 3/4 photographic view: front gable wall left of the corner FX,
+  // side wall receding to the right and rising toward the horizon
+  const fw = 128 * s, sw2 = 150 * s, rise = sw2 * 0.15;
+  const FX = cx + bw * 0.12;
+  const apexX = FX - fw / 2, apexY = bodyTop - 58 * s;
+  const winW = 30 * s, winH = 37 * s, winY = bodyTop + 32 * s;
+  cabin = {
+    s, cx, baseY, bw, bh, bodyTop, roofTop, eave, fence: C.fence, pool: C.pool,
+    fw, sw2, rise, FX, apexX, apexY,
+    windows: [
+      { x: FX - fw * 0.86, y: winY, w: winW, h: winH, ph: 0.0 },
+      { x: FX - fw * 0.52, y: winY, w: winW, h: winH, ph: 2.1 }
+    ],
+    chimX: apexX + sw2 * 0.45 + 8 * s, chimW: 17 * s,
+    chimTop: apexY - rise * 0.42 - 38 * s,
+    roofBox: { x: apexX - fw * 0.65, y: apexY - rise - 26 * s,
+               w: sw2 + fw * 1.05, h: (bodyTop - apexY) + rise + 36 * s },
+    fenceX0: cx - bw * 2.05, fenceX1: cx + bw * 1.25
+  };
+}
+
+function buildDrawList() {
+  drawList = trees.map(t => ({ y: t.baseY, tree: t }));
+  if (cabin) drawList.push({ y: cabin.baseY, cabin: true });
+  if (lakeGeom) drawList.push({ y: lakeGeom.top, lake: true });
+  drawList.sort((a, b) => a.y - b.y);
+}
+
+/* ============================== offscreen layers ============================== */
+
+function makeLayer(x, y, w, h) {
+  x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(w * dpr));
+  c.height = Math.max(1, Math.round(h * dpr));
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, -x * dpr, -y * dpr);
+  return { c, g, x, y, w, h };
+}
+let Lmnt, Ltre, Lcab, Ldft, Lgal, Lcld;
+let softSprite, smokeSprite, cloudSprites = [];
+let galWarm, galViolet, galBlue;
+
+function makeSoftSprite(rc, gc, bc) {
+  const d = 64, c = document.createElement('canvas');
+  c.width = d; c.height = d;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(d / 2, d / 2, 0, d / 2, d / 2, d / 2);
+  gr.addColorStop(0, `rgba(${rc},${gc},${bc},1)`);
+  gr.addColorStop(0.55, `rgba(${rc},${gc},${bc},0.5)`);
+  gr.addColorStop(1, `rgba(${rc},${gc},${bc},0)`);
+  g.fillStyle = gr;
+  g.fillRect(0, 0, d, d);
+  return c;
+}
+function makeCloudSprite(seed) {
+  const cw = 320, ch = 140, c = document.createElement('canvas');
+  c.width = cw; c.height = ch;
+  const g = c.getContext('2d');
+  const rng = mulberry32(seed);
+  for (let i = 0; i < 13; i++) {
+    const r = 18 + rng() * 34;
+    // keep every blob fully inside the sprite so no hard clipped edges appear
+    const bx = r * 1.5 + rng() * (cw - r * 3);
+    const by = ch * 0.32 + rng() * (ch * 0.68 - r * 1.0) * 0.6;
+    g.globalAlpha = 0.35 + rng() * 0.45;
+    g.drawImage(softSprite, bx - r * 1.4, by - r * 0.8, r * 2.8, r * 1.6);
+  }
+  g.globalAlpha = 1;
+  // guarantee soft borders all around
+  g.globalCompositeOperation = 'destination-in';
+  g.save();
+  g.translate(cw / 2, ch * 0.52);
+  g.scale(1, ch / cw);
+  const mg = g.createRadialGradient(0, 0, 0, 0, 0, cw * 0.5);
+  mg.addColorStop(0.55, 'rgba(0,0,0,1)');
+  mg.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = mg;
+  g.fillRect(-cw / 2, -cw / 2, cw, cw);
+  g.restore();
+  // flatten the base a little, like real stratocumulus
+  g.globalCompositeOperation = 'destination-out';
+  const fg = g.createLinearGradient(0, ch * 0.72, 0, ch);
+  fg.addColorStop(0, 'rgba(0,0,0,0)');
+  fg.addColorStop(1, 'rgba(0,0,0,0.8)');
+  g.fillStyle = fg;
+  g.fillRect(0, ch * 0.72, cw, ch * 0.28);
+  g.globalCompositeOperation = 'source-over';
+  return c;
+}
+
+/* ---------- far mountains (rock + snow slopes) ---------- */
+function ridgePoints(seed, baseY, amp, n) {
+  const rng = mulberry32(seed);
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const x = (i / n) * (W * 1.1) - W * 0.05;
+    const peak = i % 2 === 0;
+    const y = baseY - amp * (peak ? 0.45 + 0.55 * rng() : 0.05 + 0.22 * rng());
+    pts.push([x, y]);
+    if (i < n && rng() < 0.55) {
+      pts.push([x + (W * 1.1 / n) * (0.3 + 0.4 * rng()), baseY - amp * (0.2 + 0.5 * rng())]);
+    }
+  }
+  return pts;
+}
+function drawRidge(g, pts, o) {
+  // silhouette
+  g.beginPath();
+  g.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+  g.lineTo(W + 10, H * 0.80); g.lineTo(-10, H * 0.80);
+  g.closePath();
+  g.fillStyle = o.fill;
+  g.fill();
+  // shadowed rock facets on the right flank of each peak
+  if (o.facet > 0.01) {
+    for (let i = 1; i < pts.length - 1; i++) {
+      if (pts[i][1] < pts[i - 1][1] && pts[i][1] < pts[i + 1][1]) {
+        g.beginPath();
+        g.moveTo(pts[i][0], pts[i][1]);
+        g.lineTo(pts[i + 1][0], pts[i + 1][1]);
+        g.lineTo(pts[i][0], pts[i + 1][1]);
+        g.closePath();
+        g.fillStyle = `rgba(18,22,44,${o.facet})`;
+        g.fill();
+      }
+    }
+  }
+  // snow on the upper slopes, fading toward the rock below
+  if (o.snow > 0.01) {
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+    for (let i = pts.length - 1; i >= 0; i--) {
+      const wob = 0.7 + 0.6 * (((i * 7919) % 97) / 97);
+      g.lineTo(pts[i][0], pts[i][1] + o.drop * wob);
+    }
+    g.closePath();
+    let top = 1e9, bot = -1e9;
+    for (const p of pts) { if (p[1] < top) top = p[1]; if (p[1] > bot) bot = p[1]; }
+    const sg = g.createLinearGradient(0, top, 0, bot + o.drop);
+    sg.addColorStop(0, `rgba(244,249,255,${o.snow})`);
+    sg.addColorStop(1, 'rgba(244,249,255,0)');
+    g.fillStyle = sg;
+    g.fill();
+  }
+  // bright ridge line
+  g.beginPath();
+  g.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+  g.strokeStyle = `rgba(238,244,255,${o.cap})`;
+  g.lineWidth = 2.2;
+  g.lineJoin = 'round';
+  g.stroke();
+}
+function renderMountains() {
+  const g = Lmnt.g;
+  g.clearRect(Lmnt.x, Lmnt.y, Lmnt.w, Lmnt.h);
+  const rocky = SC.rocky;
+  const nFar = Math.max(6, Math.round(W / (rocky ? 190 : 150)));
+  const nNear = Math.max(8, Math.round(W / (rocky ? 150 : 120)));
+  const aFar = Math.min(H * (0.175 + rocky * 0.06), W * 0.14);
+  const aNear = Math.min(H * (0.125 + rocky * 0.05), W * 0.11);
+  drawRidge(g, ridgePoints(1234, H * (0.545 - rocky * 0.02), aFar, nFar), {
+    fill: rocky ? '#828cae' : '#8b93c0', cap: 0.5,
+    snow: rocky ? 0.85 : 0.45, drop: aFar * (rocky ? 0.55 : 0.4), facet: rocky ? 0.10 : 0.05
+  });
+  drawRidge(g, ridgePoints(5678, H * 0.615, aNear, nNear), {
+    fill: rocky ? '#5a6382' : '#636c9f', cap: 0.35,
+    snow: rocky ? 0.75 : 0.35, drop: aNear * (rocky ? 0.5 : 0.38), facet: rocky ? 0.16 : 0.08
+  });
+}
+
+/* ---------- distant tree line + snow ground plane ---------- */
+function renderTreeline() {
+  const g = Ltre.g;
+  g.clearRect(Ltre.x, Ltre.y, Ltre.w, Ltre.h);
+  const baseY = H * 0.655;
+  const col = SC.frost ? '#4a6272' : '#22404a';
+  const hasFilter = typeof g.filter === 'string';
+  const passes = hasFilter ? 1 : 3;
+  for (let p = 0; p < passes; p++) {
+    if (hasFilter) g.filter = 'blur(1.4px)';
+    else { g.globalAlpha = 0.4; g.translate((p - 1) * 1.2, 0); }
+    const rr = mulberry32(555);
+    g.fillStyle = col;
+    for (let x = -10; x < W + 10; x += 6 + rr() * 9) {
+      const th = 16 + rr() * H * 0.028;
+      const tw = th * (0.42 + rr() * 0.2);
+      const ty = baseY + (rr() - 0.5) * 8;
+      g.beginPath();
+      g.moveTo(x, ty - th);
+      g.lineTo(x - tw / 2, ty);
+      g.lineTo(x + tw / 2, ty);
+      g.closePath();
+      g.fill();
+    }
+    if (hasFilter) g.filter = 'none';
+    else g.setTransform(dpr, 0, 0, dpr, -Ltre.x * dpr, -Ltre.y * dpr);
+  }
+  g.globalAlpha = 1;
+  const gr = g.createLinearGradient(0, baseY - 4, 0, H);
+  gr.addColorStop(0, '#e9effb');
+  gr.addColorStop(0.5, '#dde7f7');
+  gr.addColorStop(1, '#d2ddf0');
+  g.fillStyle = gr;
+  g.fillRect(-10, baseY - 3, W + 20, H - baseY + 13);
+  const hz = g.createLinearGradient(0, baseY - 22, 0, baseY + 10);
+  hz.addColorStop(0, 'rgba(233,239,251,0)');
+  hz.addColorStop(1, 'rgba(233,239,251,0.9)');
+  g.fillStyle = hz;
+  g.fillRect(-10, baseY - 22, W + 20, 32);
+  // extra cool glaze over the distance — winter air is full of moisture
+  g.fillStyle = `rgba(196,206,238,${0.10 + SC.mist * 0.10})`;
+  g.fillRect(-10, baseY - 26, W + 20, 34);
+}
+
+/* ---------- Milky Way band ---------- */
+function renderGalaxy() {
+  const g = Lgal.g;
+  g.clearRect(Lgal.x, Lgal.y, Lgal.w, Lgal.h);
+  if (SC.galaxy < 0.05) return;
+  const rng = mulberry32(3777);
+  g.save();
+  g.translate(W * 0.52, H * 0.26);
+  g.rotate(-0.42);
+  const len = W * 0.85, wid = H * 0.11;
+  for (let i = 0; i < 130; i++) {
+    const t = (rng() - 0.5) * len;
+    const off = (rng() + rng() + rng() - 1.5) * wid;
+    const core = Math.abs(off) < wid * 0.35;
+    const sp = core ? (rng() < 0.5 ? galWarm : galViolet) : galBlue;
+    const r = 18 + rng() * 85;
+    g.globalAlpha = (core ? 0.10 : 0.06) * (0.6 + rng() * 0.7);
+    g.drawImage(sp, t - r, off - r * 0.6, r * 2, r * 1.2);
+  }
+  // dark dust lane through the middle
+  for (let i = 0; i < 26; i++) {
+    const t = (rng() - 0.5) * len * 0.9;
+    const r = 20 + rng() * 55;
+    g.globalAlpha = 0.10 + rng() * 0.10;
+    g.fillStyle = '#05070f';
+    g.beginPath();
+    g.ellipse(t, (rng() - 0.5) * wid * 0.35, r, r * 0.35, 0, 0, Math.PI * 2);
+    g.fill();
+  }
+  // dense pinpoint stars along the band
+  g.fillStyle = '#ffffff';
+  for (let i = 0; i < 420; i++) {
+    const t = (rng() - 0.5) * len * 1.1;
+    const off = (rng() + rng() + rng() - 1.5) * wid * 1.5;
+    g.globalAlpha = 0.15 + rng() * 0.6;
+    g.fillRect(t, off, rng() < 0.85 ? 1 : 1.6, 1);
+  }
+  g.restore();
+  g.globalAlpha = 1;
+}
+
+/* ---------- mid-ground spruce sprites ---------- */
+function renderTreeSprite(tr) {
+  const pad = tr.w * 0.5;
+  const sw = Math.ceil(tr.w + pad * 2), sh = Math.ceil(tr.h + pad);
+  if (!tr.sprite) tr.sprite = document.createElement('canvas');
+  tr.sprite.width = Math.round(sw * dpr);
+  tr.sprite.height = Math.round(sh * dpr);
+  tr.sw = sw; tr.sh = sh; tr.ax = sw / 2; tr.ay = sh;
+  const g = tr.sprite.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cx = sw / 2, baseY = sh;
+
+  // photographic dab-painted spruce; light side follows the tree's world position
+  const L = getPhotoLighting(evalCycle(cycleT));
+  const litDir = Math.sign(SUNX - tr.x) || 1;
+  // farther (smaller) trees sit deeper in the winter haze
+  const hazeF = clamp(0.20 + (1 - tr.h / (H * 0.24)) * 0.30, 0.15, 0.5);
+  paintSpruce(g, cx, baseY, tr.h, tr.seed, hazeF, L, tr.accum, !!SC.frost, litDir);
+}
+
+/* ---------- cabin + fence layer ---------- */
+function renderCabin() {
+  if (!cabin) return;
+  const g = Lcab.g, cb = cabin, s = cb.s;
+  g.clearRect(Lcab.x, Lcab.y, Lcab.w, Lcab.h);
+
+  if (cb.fence) {
+    const rng = mulberry32(3131);
+    g.strokeStyle = '#453322';
+    g.lineWidth = 3 * s;
+    const fenceY = x => cb.baseY + 12 * s + (x - cb.cx) * 0.055;
+    for (const off of [-20 * s, -9 * s]) {
+      g.beginPath();
+      g.moveTo(cb.fenceX0, fenceY(cb.fenceX0) + off);
+      g.lineTo(cb.fenceX1, fenceY(cb.fenceX1) + off);
+      g.stroke();
+    }
+    g.fillStyle = '#3e2d1e';
+    for (let x = cb.fenceX0; x <= cb.fenceX1; x += 46 * s) {
+      const y = fenceY(x);
+      g.fillRect(x - 2.5 * s, y - 28 * s, 5 * s, 30 * s);
+    }
+    g.strokeStyle = 'rgba(246,250,255,0.96)';
+    g.lineCap = 'round';
+    const fth = (2 + 6 * fenceAccum) * s;
+    g.beginPath();
+    for (let x = cb.fenceX0; x <= cb.fenceX1; x += 12 * s) {
+      const y = fenceY(x) - 20 * s - fth * 0.4 - rng() * 2;
+      x === cb.fenceX0 ? g.moveTo(x, y) : g.lineTo(x, y);
+    }
+    g.lineWidth = fth;
+    g.stroke();
+    g.fillStyle = 'rgba(246,250,255,0.96)';
+    for (let x = cb.fenceX0; x <= cb.fenceX1; x += 46 * s) {
+      const y = fenceY(x);
+      g.beginPath();
+      g.ellipse(x, y - 29 * s, 5 * s, (2 + 3 * fenceAccum) * s, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.lineCap = 'butt';
+  }
+
+  /* ---- photographic 3/4-view log cabin (proto4 engine) ---- */
+  const L = getPhotoLighting(evalCycle(cycleT));
+  const rng = mulberry32(4040);
+  dabRng = mulberry32(2);
+  const FX = cb.FX, FY = cb.baseY, fw = cb.fw, sw = cb.sw2, wh = cb.bh, rise = cb.rise;
+  const gy = cb.bodyTop, apexX = cb.apexX, apexY = cb.apexY;
+  const slope = -(rise / sw);
+  const sideLit = SUNX > FX + sw / 2, frontLit2 = SUNX < FX;
+
+  // soft violet cast shadow on the snow
+  const dir = SUNX < FX ? 1 : -1;
+  for (let i = 0; i < 70; i++) {
+    const f = rng();
+    dab(g, FX - fw + f * (fw + sw) + dir * (20 + rng() * 70) * s, FY + (4 + rng() * 26) * s - f * rise * 0.8,
+        50 + rng() * 60, 12 + rng() * 10, 0.05 * dir, pick(rng, L.snowShd), 0.16 + rng() * 0.12);
+  }
+  // side wall: per-log parallelograms with rounded-log shading
+  for (let i = 0; i < 7; i++) {
+    const f0 = i / 7, f1 = (i + 1) / 7;
+    const yA0 = FY - wh * f0, yA1 = FY - wh * f1;
+    const lg = g.createLinearGradient(0, yA1, 0, yA0);
+    const base = sideLit ? [126, 94, 60] : [66, 48, 30];
+    lg.addColorStop(0, rgb(mixC(base, [30, 20, 11], 0.45)));
+    lg.addColorStop(0.4, rgb(base));
+    lg.addColorStop(1, rgb(mixC(base, [20, 13, 7], 0.55)));
+    g.fillStyle = lg;
+    g.beginPath();
+    g.moveTo(FX, yA0); g.lineTo(FX + sw, yA0 - rise);
+    g.lineTo(FX + sw, yA1 - rise + 1); g.lineTo(FX, yA1 + 1);
+    g.closePath(); g.fill();
+    g.fillStyle = 'rgba(15,9,4,0.55)';
+    g.beginPath();
+    g.moveTo(FX, yA1); g.lineTo(FX + sw, yA1 - rise);
+    g.lineTo(FX + sw, yA1 - rise + 1.8 * s); g.lineTo(FX, yA1 + 1.8 * s);
+    g.closePath(); g.fill();
+  }
+  for (let i = 0; i < 120; i++) {
+    const t = rng(), f = rng();
+    dab(g, FX + sw * t, FY - wh * f - rise * t + rng() * 2, 14 + rng() * 22, 3 + rng() * 3,
+        slope, mixC([30, 20, 11], [150, 116, 76], rng()), 0.08 + rng() * 0.08);
+  }
+  // front gable wall: horizontal logs
+  for (let i = 0; i < 7; i++) {
+    const f0 = i / 7, f1 = (i + 1) / 7;
+    const base = frontLit2 ? [138, 104, 66] : [74, 54, 34];
+    const lg = g.createLinearGradient(0, FY - wh * f1, 0, FY - wh * f0);
+    lg.addColorStop(0, rgb(mixC(base, [32, 22, 12], 0.4)));
+    lg.addColorStop(0.4, rgb(base));
+    lg.addColorStop(1, rgb(mixC(base, [22, 14, 8], 0.5)));
+    g.fillStyle = lg;
+    g.fillRect(FX - fw, FY - wh * f1, fw, wh * (f1 - f0));
+    g.fillStyle = 'rgba(15,9,4,0.5)';
+    g.fillRect(FX - fw, FY - wh * f1, fw, 1.8 * s);
+  }
+  for (let i = 0; i < 70; i++) {
+    dab(g, FX - fw + fw * rng(), FY - wh * rng(), 12 + rng() * 18, 3 + rng() * 3, 0,
+        mixC([32, 22, 12], [160, 124, 82], rng()), 0.08 + rng() * 0.08);
+  }
+  // door on the front wall, right of the windows
+  g.fillStyle = '#3a2917';
+  g.fillRect(FX - fw * 0.13 - 14 * s, FY - 52 * s, 28 * s, 52 * s);
+  g.strokeStyle = 'rgba(255,200,140,0.15)';
+  g.lineWidth = 1.5 * s;
+  g.strokeRect(FX - fw * 0.13 - 11 * s, FY - 49 * s, 22 * s, 49 * s);
+  // gable triangle
+  const gTri = frontLit2 ? [128, 96, 62] : [64, 47, 30];
+  g.fillStyle = rgb(gTri);
+  g.beginPath();
+  g.moveTo(FX - fw - 1, gy + 1); g.lineTo(apexX, apexY); g.lineTo(FX + 1, gy + 1);
+  g.closePath(); g.fill();
+  for (let i = 1; i < 5; i++) {
+    g.fillStyle = 'rgba(15,9,4,0.4)';
+    const yy = gy - i * (gy - apexY) / 5;
+    const half = (fw / 2) * (1 - i / 5);
+    g.fillRect(apexX - half, yy, half * 2, 1.6 * s);
+  }
+  // crossed log ends at the corner
+  for (let i = 0; i <= 7; i++) {
+    const y = FY - wh * (i / 7) - 3 * s;
+    const eg = g.createRadialGradient(FX + 1 * s - 1.5 * s, y - 1.5 * s, 0.5 * s, FX + 1 * s, y, 4.6 * s);
+    eg.addColorStop(0, '#c9a678');
+    eg.addColorStop(0.7, '#8a6844');
+    eg.addColorStop(1, '#4a3520');
+    g.fillStyle = eg;
+    g.beginPath(); g.arc(FX + 1 * s, y, 4.6 * s, 0, 7); g.fill();
+  }
+  // ambient occlusion under the eaves
+  const ao = g.createLinearGradient(0, gy - 4 * s, 0, gy + 26 * s);
+  ao.addColorStop(0, 'rgba(10,7,4,0.5)');
+  ao.addColorStop(1, 'rgba(10,7,4,0)');
+  g.fillStyle = ao;
+  g.fillRect(FX - fw, gy - 4 * s, fw + sw, 30 * s);
+  // roof plane, dark wood, receding
+  g.fillStyle = '#241a10';
+  g.beginPath();
+  g.moveTo(apexX - fw * 0.56, gy + 2 * s);
+  g.lineTo(apexX, apexY);
+  g.lineTo(apexX + sw, apexY - rise * 0.95);
+  g.lineTo(apexX + sw + fw * 0.34, gy - rise * 0.95 + 2 * s);
+  g.lineTo(apexX + fw * 0.52, gy + 2 * s);
+  g.closePath(); g.fill();
+  /* snow blanket: crisp silhouette, softly dab-shaded interior; thickness follows roofAccum */
+  const acc = 0.35 + 0.65 * roofAccum;
+  const lift = 10 * s * acc;
+  const roofSnowCols = frontLit2 ? L.snowLit : L.snowMid;
+  g.beginPath();
+  g.moveTo(apexX - fw * 0.62, gy + 3 * s);
+  g.quadraticCurveTo(apexX - fw * 0.30, apexY + 4 * s, apexX, apexY - lift);
+  g.lineTo(apexX + sw, apexY - rise * 0.95 - lift);
+  g.quadraticCurveTo(apexX + sw + fw * 0.22, gy - rise * 0.95 - lift, apexX + sw + fw * 0.38, gy - rise * 0.95 + 1 * s);
+  g.quadraticCurveTo(apexX + sw + fw * 0.42, gy - rise * 0.95 + 8 * s, apexX + sw + fw * 0.32, gy - rise * 0.95 + 9 * s);
+  g.lineTo(apexX + fw * 0.55, gy + 11 * s);
+  g.quadraticCurveTo(apexX - fw * 0.50, gy + 13 * s, apexX - fw * 0.65, gy + 9 * s);
+  g.closePath();
+  g.save();
+  g.clip();
+  g.fillStyle = rgb(L.snowMid[0]);
+  g.fillRect(apexX - fw, apexY - 30 * s, sw + fw * 2, wh + 80 * s);
+  const nDab = (isMobile ? 260 : 500);
+  for (let i = 0; i < nDab; i++) {
+    const t = rng(), u2 = rng();
+    const x = lerp(apexX - fw * 0.62, apexX + sw + fw * 0.38, t);
+    const y = lerp(apexY - lift * 0.8, apexY - rise * 0.93 - lift * 0.8, clamp((t - 0.08) / 0.84, 0, 1)) + u2 * (wh * 0.30 + 18 * s);
+    let col = u2 < 0.3 ? mixC(pick(rng, L.snowLit), L.sunGlow, frontLit2 ? 0.3 : 0.12)
+            : u2 > 0.72 ? pick(rng, L.snowShd) : pick(rng, roofSnowCols);
+    dab(g, x, y, 13 + rng() * 16, 7 + rng() * 7, slope + (rng() - 0.5) * 0.06, col, 0.30 + rng() * 0.22);
+  }
+  g.restore();
+  // sun-bright crest along the snow ridge
+  for (let i = 0; i < 90; i++) {
+    const t = rng();
+    dab(g, lerp(apexX, apexX + sw, t), lerp(apexY - lift, apexY - rise * 0.95 - lift, t) + rng() * 3 * s,
+        10 + rng() * 12, 3.5 + rng() * 3, slope, mixC(pick(rng, L.snowLit), L.sunCore, 0.35), 0.35 + rng() * 0.25);
+  }
+  // chimney: crisp stone stack with a snow cap
+  const chX2 = apexX + sw * 0.45, chY2 = apexY - rise * 0.42;
+  g.fillStyle = '#63626c';
+  g.fillRect(chX2, chY2 - 38 * s, 17 * s, 42 * s);
+  const chg = g.createLinearGradient(chX2, 0, chX2 + 17 * s, 0);
+  chg.addColorStop(0, 'rgba(255,255,255,0.16)');
+  chg.addColorStop(1, 'rgba(0,0,0,0.35)');
+  g.fillStyle = chg;
+  g.fillRect(chX2, chY2 - 38 * s, 17 * s, 42 * s);
+  for (let yy = 0; yy < 5; yy++)
+    for (let xx = 0; xx < 2; xx++) {
+      g.fillStyle = `rgba(${52 + rng() * 36 | 0},${52 + rng() * 34 | 0},${58 + rng() * 34 | 0},0.8)`;
+      g.fillRect(chX2 + 1.5 * s + xx * 8 * s + (yy % 2) * 2 * s, chY2 - 36 * s + yy * 8 * s, 6.5 * s, 6 * s);
+    }
+  g.fillStyle = rgb(L.snowMid[0]);
+  g.beginPath();
+  g.ellipse(chX2 + 8.5 * s, chY2 - 39 * s, 12 * s, (2 + 2.5 * roofAccum) * s, 0, 0, Math.PI * 2);
+  g.fill();
+
+  // window frames + snowy sills (the warm glass is drawn live by windowGlow)
+  for (const wn of cb.windows) {
+    g.fillStyle = '#2a1c10';
+    g.fillRect(wn.x - 3 * s, wn.y - 3 * s, wn.w + 6 * s, wn.h + 6 * s);
+    g.fillStyle = 'rgba(246,250,255,0.9)';
+    g.beginPath();
+    g.ellipse(wn.x + wn.w / 2, wn.y + wn.h + 4 * s, wn.w * 0.62, 3 * s, 0, 0, Math.PI * 2);
+    g.fill();
+  }
+}
+
+/* ---------- foreground drifts ---------- */
+function smoothAccum() {
+  for (let p = 0; p < 2; p++) {
+    for (let i = 1; i < HN - 1; i++) {
+      accumPx[i] = (accumPx[i - 1] + 2 * accumPx[i] + accumPx[i + 1]) * 0.25;
+    }
+  }
+}
+function renderDrifts() {
+  smoothAccum();
+  const g = Ldft.g;
+  g.clearRect(Ldft.x, Ldft.y, Ldft.w, Ldft.h);
+
+  g.beginPath();
+  g.moveTo(-10, H + 10);
+  for (let i = 0; i < HN; i++) {
+    const x = (i / (HN - 1)) * W, y = baseYArr[i] - accumPx[i];
+    i ? g.lineTo(x, y - H * 0.022) : g.moveTo(x, y - H * 0.022);
+  }
+  g.lineTo(W + 10, H + 10);
+  g.lineTo(-10, H + 10);
+  g.closePath();
+  g.save();
+  g.filter = typeof g.filter === 'string' ? 'blur(9px)' : 'none';
+  g.fillStyle = 'rgba(103,128,190,0.35)';
+  g.fill();
+  g.restore();
+
+  g.beginPath();
+  g.moveTo(-10, H + 10);
+  g.lineTo(-10, baseYArr[0] - accumPx[0]);
+  for (let i = 0; i < HN - 1; i++) {
+    const x1 = (i / (HN - 1)) * W, y1 = baseYArr[i] - accumPx[i];
+    const x2 = ((i + 1) / (HN - 1)) * W, y2 = baseYArr[i + 1] - accumPx[i + 1];
+    g.quadraticCurveTo(x1, y1, (x1 + x2) / 2, (y1 + y2) / 2);
+  }
+  g.lineTo(W + 10, baseYArr[HN - 1] - accumPx[HN - 1]);
+  g.lineTo(W + 10, H + 10);
+  g.closePath();
+  const gr = g.createLinearGradient(0, H * 0.72, 0, H);
+  gr.addColorStop(0, '#f8fbff');
+  gr.addColorStop(0.45, '#e9effb');
+  gr.addColorStop(1, '#c7d3ec');
+  g.fillStyle = gr;
+  g.fill();
+  g.beginPath();
+  for (let i = 0; i < HN; i++) {
+    const x = (i / (HN - 1)) * W, y = baseYArr[i] - accumPx[i];
+    i ? g.lineTo(x, y) : g.moveTo(x, y);
+  }
+  g.strokeStyle = 'rgba(255,255,255,0.85)';
+  g.lineWidth = 2;
+  g.stroke();
+  for (const m of [[0.24, 0.10], [0.60, 0.08], [0.94, 0.11]]) {
+    const mx = m[0] * W, my = surfaceY(mx) + H * 0.045;
+    const rad = W * m[1] + H * 0.05;
+    const sg = g.createRadialGradient(mx, my, 0, mx, my, rad);
+    sg.addColorStop(0, 'rgba(96,124,196,0.20)');
+    sg.addColorStop(1, 'rgba(96,124,196,0)');
+    g.fillStyle = sg;
+    g.beginPath();
+    g.ellipse(mx, my, rad, rad * 0.5, 0, 0, Math.PI * 2);
+    g.fill();
+  }
+  // faint wind-carved texture in the snow surface
+  const rng = mulberry32(9911);
+  for (let i = 0; i < 260; i++) {
+    const x = rng() * W;
+    const y = surfaceY(x) + 4 + rng() * (H - surfaceY(x)) * 0.7;
+    g.fillStyle = rng() < 0.5 ? 'rgba(150,170,215,0.07)' : 'rgba(255,255,255,0.30)';
+    g.fillRect(x, y, 1.5 + rng() * 4, 1);
+  }
+  buildSparkles();
+}
+function buildSparkles() {
+  const rng = mulberry32(6767);
+  sparkles = [];
+  for (let i = 0; i < (isMobile ? 36 : 70); i++) {
+    const x = rng() * W;
+    sparkles.push({ x, y: surfaceY(x) + 3 + rng() * H * 0.05, ph: rng() * Math.PI * 2, sp: 0.25 + rng() * 0.55 });
+  }
+}
+
+/* ---------- lake reflection snapshot ---------- */
+function buildReflection() {
+  if (!lakeGeom) { reflC = null; return; }
+  const RH = Math.round(lakeGeom.bot - lakeGeom.top);
+  if (!reflC) reflC = document.createElement('canvas');
+  reflC.width = Math.max(1, W);           // deliberately 1x — soft, shimmery
+  reflC.height = Math.max(1, RH);
+  const g = reflC.getContext('2d');
+  g.save();
+  g.translate(0, RH);
+  g.scale(1, -1);
+  g.translate(0, -(lakeGeom.top - RH));   // mirror the strip just above the waterline
+  g.drawImage(Lmnt.c, Lmnt.x, Lmnt.y, Lmnt.w, Lmnt.h);
+  g.drawImage(Ltre.c, Ltre.x, Ltre.y, Ltre.w, Ltre.h);
+  if (cabin && cabin.baseY <= lakeGeom.top) g.drawImage(Lcab.c, Lcab.x, Lcab.y, Lcab.w, Lcab.h);
+  for (const tr of trees) {
+    if (tr.baseY > lakeGeom.top) continue;
+    g.drawImage(tr.sprite, tr.x - tr.ax, tr.baseY - tr.ay, tr.sw, tr.sh);
+  }
+  g.restore();
+  g.fillStyle = 'rgba(22,38,72,0.28)';    // water absorbs a little light
+  g.fillRect(0, 0, W, RH);
+}
+
+/* ============================== resize / scene build ============================== */
+
+let renderedOnce = false;
+function getPhotoLighting(cyc) {
+  // Light model for photographic rendering based on day/night cycle
+  // Returns sun position and color palettes
+  const isNight = cyc.night > 0.5;
+  const isSunset = cycleT > 0.72 && cycleT < 1.0;
+  const isSunrise = cycleT >= 0.0 && cycleT < 0.25;
+
+  let sunX = 0.44, sunY = 0.455;
+  if (isSunset) {
+    sunX = lerp(0.44, 0.175, (cycleT - 0.72) / 0.28);
+    sunY = 0.47;
+  } else if (isSunrise) {
+    sunX = lerp(0.175, 0.44, cycleT / 0.25);
+    sunY = 0.47;
+  }
+  SUNX = sunX * W;
+  SUNY = sunY * H;
+
+  // Colour palettes based on time
+  if (isSunrise) {
+    return {
+      sunX: sunX, sunY: sunY,
+      sunCore: [255, 246, 214], sunGlow: [255, 214, 150],
+      sky: [[70, 116, 176], [128, 164, 208], [214, 216, 218], [255, 230, 184]],
+      cloudHi: [[252, 250, 246], [240, 240, 246]], cloudLo: [[255, 214, 160], [226, 188, 176]],
+      snowLit: [[255, 248, 234], [255, 238, 210], [250, 240, 235]],
+      snowMid: [[228, 234, 248], [218, 226, 246], [235, 236, 250]],
+      snowShd: [[164, 180, 222], [150, 164, 214], [180, 172, 220]],
+      tree: [[16, 34, 27], [24, 46, 34], [34, 58, 40], [20, 40, 36]],
+      rock: [[92, 96, 118], [120, 116, 128]],
+      haze: [212, 218, 234], grade: 0.16
+    };
+  } else {
+    return {
+      sunX: sunX, sunY: sunY,
+      sunCore: [255, 228, 176], sunGlow: [255, 178, 118],
+      sky: [[44, 54, 108], [110, 96, 142], [206, 142, 138], [255, 186, 130]],
+      cloudHi: [[240, 226, 232], [226, 210, 226]], cloudLo: [[255, 178, 128], [240, 150, 130]],
+      snowLit: [[255, 236, 212], [255, 224, 194], [252, 232, 224]],
+      snowMid: [[220, 224, 244], [208, 214, 240], [226, 220, 244]],
+      snowShd: [[146, 158, 212], [134, 142, 202], [164, 148, 210]],
+      tree: [[14, 30, 26], [22, 42, 32], [30, 52, 38], [18, 36, 34]],
+      rock: [[86, 88, 112], [112, 104, 122]],
+      haze: [206, 190, 214], grade: 0.20
+    };
+  }
+}
+
+function buildScene() {
+  SC = SCENES[sceneIdx];
+  lakeGeom = SC.lake ? { top: Math.round(H * SC.lake.top), bot: Math.round(H * SC.lake.bot) } : null;
+  roofAccum = fenceAccum = reduceMotion || SC.frost ? 1 : 0.35;
+  melting = false;
+  smoke.length = 0;
+  particles.length = 0;
+
+  buildHeightmap();
+  buildStars();
+  buildClouds();
+  buildTrees();
+  buildCabin();
+  buildDrawList();
+  renderMountains();
+  renderTreeline();
+  renderGalaxy();
+  for (const tr of trees) renderTreeSprite(tr);
+  renderCabin();
+  renderDrifts();
+  buildReflection();
+  needsRender = true;
+}
+function resize() {
+  W = window.innerWidth; H = window.innerHeight;
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  isMobile = W < 700;
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  Lmnt = makeLayer(0, H * 0.24, W, H * 0.56);
+  Ltre = makeLayer(0, H * 0.54, W, H * 0.46);
+  Lcab = makeLayer(0, H * 0.30, W, H * 0.70);
+  Ldft = makeLayer(0, H * 0.66, W, H * 0.34);
+  Lgal = makeLayer(0, 0, W, H * 0.62);
+  Lcld = makeLayer(0, 0, W, H * 0.60);
+  softSprite = makeSoftSprite(255, 255, 255);
+  smokeSprite = makeSoftSprite(214, 219, 232);
+  galWarm = makeSoftSprite(255, 212, 168);
+  galViolet = makeSoftSprite(206, 182, 232);
+  galBlue = makeSoftSprite(148, 172, 232);
+  cloudSprites = [makeCloudSprite(41), makeCloudSprite(42), makeCloudSprite(43)];
+
+  // photographic rendering planes
+  photoBG = document.createElement('canvas');
+  photoBG.width = W; photoBG.height = H;
+  bgCtx = photoBG.getContext('2d');
+  photoFO = document.createElement('canvas');
+  photoFO.width = W; photoFO.height = H;
+  foCtx = photoFO.getContext('2d');
+  photoNE = document.createElement('canvas');
+  photoNE.width = W; photoNE.height = H;
+  neCtx = photoNE.getContext('2d');
+
+  brushTintCache.clear();
+  initPhotoBrush();
+  buildGrain();
+
+  buildScene();
+  setActiveFlakes(targetFlakeCount());
+}
+
+/* ============================== wind & gusts ============================== */
+
+function updateWind(dt) {
+  const cfg = WIND_CFG[windMode];
+  if (!reduceMotion) {
+    gustClock += dt;
+    if (gustState === 'idle' && gustClock >= nextGust) {
+      gustState = 'rise'; gustClock = 0;
+      gustDir = Math.random() < 0.72 ? 1 : -1;
+      gustAmp = 0.7 + Math.random() * 0.6;
+    } else if (gustState === 'rise') {
+      gustEnv = smooth(clamp(gustClock / 1.5, 0, 1));
+      if (gustClock >= 1.5) { gustState = 'hold'; gustClock = 0; nextGust = 1.2 + Math.random() * 2.3; }
+    } else if (gustState === 'hold') {
+      gustEnv = 1;
+      if (gustClock >= nextGust) { gustState = 'fall'; gustClock = 0; }
+    } else if (gustState === 'fall') {
+      gustEnv = 1 - smooth(clamp(gustClock / 3, 0, 1));
+      if (gustClock >= 3) { gustState = 'idle'; gustClock = 0; gustEnv = 0; nextGust = 8 + Math.random() * 7; }
+    }
+  }
+  const target = cfg.base + cfg.gust * gustAmp * gustEnv * gustDir;
+  wind += (target - wind) * Math.min(1, dt * 3);
+}
+
+/* ============================== audio (fully procedural, Web Audio API) ============================== */
+
+const audio = { on: false, vol: 0.6, wind: true, fire: true, pad: true };
+let AC = null, AN = null, nextCrackle = 0;
+
+function makeNoiseBuffer(seconds) {
+  const len = Math.floor(AC.sampleRate * seconds);
+  const buf = AC.createBuffer(1, len, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) {
+    const w = Math.random() * 2 - 1;
+    last = (last + 0.02 * w) / 1.02;   // pink-ish: white softened toward low end
+    d[i] = (w * 0.4 + last * 6) * 0.35;
+  }
+  return buf;
+}
+function initAudio() {
+  if (AC) { AC.resume(); return; }
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return;
+  AC = new Ctx();
+  const noise = makeNoiseBuffer(2.5);
+  const master = AC.createGain();
+  master.gain.value = 0;
+  master.connect(AC.destination);
+
+  // wind: looped noise through a swept band-pass — the classic howl
+  const windSrc = AC.createBufferSource();
+  windSrc.buffer = noise; windSrc.loop = true;
+  const windBp = AC.createBiquadFilter();
+  windBp.type = 'bandpass'; windBp.frequency.value = 380; windBp.Q.value = 0.7;
+  const windGain = AC.createGain(); windGain.gain.value = 0;
+  windSrc.connect(windBp); windBp.connect(windGain); windGain.connect(master);
+  windSrc.start();
+
+  // gust hiss: same noise, high-passed, only audible during gusts
+  const hissSrc = AC.createBufferSource();
+  hissSrc.buffer = noise; hissSrc.loop = true; hissSrc.playbackRate.value = 1.31;
+  const hissHp = AC.createBiquadFilter();
+  hissHp.type = 'highpass'; hissHp.frequency.value = 1500;
+  const hissGain = AC.createGain(); hissGain.gain.value = 0;
+  hissSrc.connect(hissHp); hissHp.connect(hissGain); hissGain.connect(master);
+  hissSrc.start();
+
+  // fireplace: high-passed noise whose gain snaps up in tiny random crackles
+  const fireSrc = AC.createBufferSource();
+  fireSrc.buffer = noise; fireSrc.loop = true; fireSrc.playbackRate.value = 0.83;
+  const fireHp = AC.createBiquadFilter();
+  fireHp.type = 'highpass'; fireHp.frequency.value = 1100;
+  const fireLp = AC.createBiquadFilter();
+  fireLp.type = 'lowpass'; fireLp.frequency.value = 6000;
+  const fireGain = AC.createGain(); fireGain.gain.value = 0;
+  fireSrc.connect(fireHp); fireHp.connect(fireLp); fireLp.connect(fireGain); fireGain.connect(master);
+  fireSrc.start();
+
+  // ambience: a very quiet warm chord that breathes
+  const padLp = AC.createBiquadFilter();
+  padLp.type = 'lowpass'; padLp.frequency.value = 640;
+  const padGain = AC.createGain(); padGain.gain.value = 0;
+  padLp.connect(padGain); padGain.connect(master);
+  for (const [freq, det] of [[110, 0], [164.8, -4], [220, 5], [277.2, -3]]) {
+    const o = AC.createOscillator();
+    o.type = 'triangle'; o.frequency.value = freq; o.detune.value = det;
+    const og = AC.createGain(); og.gain.value = 0.22;
+    o.connect(og); og.connect(padLp);
+    o.start();
+  }
+
+  AN = { master, windBp, windGain, hissGain, fireGain, padGain };
+}
+function updateAudio() {
+  if (!AC || !AN) return;
+  const t = AC.currentTime;
+  const cyc = evalCycle(cycleT);
+  AN.master.gain.setTargetAtTime(audio.on ? audio.vol * audio.vol : 0, t, 0.25);
+  const w = Math.abs(wind);
+  AN.windGain.gain.setTargetAtTime(audio.wind ? 0.05 + w * 0.17 + intensity * 0.03 : 0, t, 0.3);
+  AN.windBp.frequency.setTargetAtTime(280 + w * 430 + Math.sin(simT * 0.31) * 90, t, 0.4);
+  AN.hissGain.gain.setTargetAtTime(audio.wind ? gustEnv * 0.045 * (0.5 + intensity) : 0, t, 0.3);
+  const fireOn = audio.fire && cabin ? (SC.cabin.sc > 0.7 ? 1 : 0.35) : 0;
+  if (fireOn && simT > nextCrackle) {
+    nextCrackle = simT + 0.05 + Math.random() * 0.28;
+    AN.fireGain.gain.cancelScheduledValues(t);
+    AN.fireGain.gain.setTargetAtTime((0.05 + Math.random() * 0.20) * fireOn, t, 0.004);
+    AN.fireGain.gain.setTargetAtTime(0.014 * fireOn, t + 0.03, 0.05);
+  } else if (!fireOn) {
+    AN.fireGain.gain.setTargetAtTime(0, t, 0.2);
+  }
+  AN.padGain.gain.setTargetAtTime(
+    audio.pad ? 0.030 + cyc.night * 0.040 + Math.sin(simT * 0.11) * 0.008 : 0, t, 0.6);
+}
+
+/* ============================== interactions ============================== */
+
+function shakeTree(tr) {
+  tr.vel += (Math.random() < 0.5 ? 1 : -1) * 0.55;
+  const dropped = tr.accum;
+  tr.accum = 0.06;
+  renderTreeSprite(tr);
+  const n = 2 + (Math.random() * 2 | 0);
+  for (let i = 0; i < n; i++) {
+    const f = 0.25 + Math.random() * 0.6;
+    particles.push({
+      type: 'clump',
+      x: tr.x + (Math.random() - 0.5) * tr.w * 0.7,
+      y: tr.baseY - tr.h * (1 - f),
+      vx: (Math.random() - 0.5) * 30 + wind * 40,
+      vy: 20 + Math.random() * 40,
+      r: (5 + Math.random() * 6) * (0.5 + dropped),
+      age: 0, life: 4
+    });
+  }
+}
+function roofAvalanche() {
+  const cb = cabin, s = cb.s;
+  const dropped = roofAccum;
+  roofAccum = 0.10;
+  renderCabin();
+  for (let i = 0; i < 5; i++) {
+    const side = i % 2 ? 1 : -1;
+    particles.push({
+      type: 'clump',
+      x: side < 0 ? cb.apexX - cb.fw * (0.25 + Math.random() * 0.35)
+                  : cb.apexX + cb.sw2 * (0.55 + Math.random() * 0.45),
+      y: cb.bodyTop + 2 * s - (side > 0 ? cb.rise * 0.6 : 0),
+      vx: side * (15 + Math.random() * 30) + wind * 40,
+      vy: 10 + Math.random() * 30,
+      r: (6 + Math.random() * 8) * (0.5 + dropped),
+      age: 0, life: 4
+    });
+  }
+}
+function hitTest(mx, my) {
+  for (let i = trees.length - 1; i >= 0; i--) {
+    const tr = trees[i];
+    if (Math.abs(mx - tr.x) < tr.w * 0.55 && my > tr.baseY - tr.h && my < tr.baseY) return { tree: tr };
+  }
+  if (cabin) {
+    const rb = cabin.roofBox;
+    if (mx > rb.x && mx < rb.x + rb.w && my > rb.y && my < rb.y + rb.h) return { roof: true };
+  }
+  return null;
+}
+canvas.addEventListener('pointerdown', e => {
+  const hit = hitTest(e.clientX, e.clientY);
+  if (!hit) return;
+  if (hit.tree) shakeTree(hit.tree);
+  else if (hit.roof) roofAvalanche();
+  needsRender = true;
+});
+canvas.addEventListener('pointermove', e => {
+  canvas.style.cursor = hitTest(e.clientX, e.clientY) ? 'pointer' : 'default';
+});
+
+/* ============================== simulation ============================== */
+
+let layerTick = 0, meltTick = 0;
+
+function refreshStaticLayers() {
+  for (const tr of trees) renderTreeSprite(tr);
+  renderCabin();
+  renderDrifts();
+  buildReflection();
+}
+
+function step(dt) {
+  simT += dt;
+  if (autoCycle) {
+    cycleT = (cycleT + dt / CYCLE_SECONDS) % 1;
+    timeRange.value = cycleT.toFixed(3);
+  }
+  updateWind(dt);
+
+  const speedMul = 0.8 + intensity * 0.9;
+
+  for (let i = 0; i < activeFlakes; i++) {
+    const L = fl[i], P = FLAYER[L];
+    const sway = Math.sin(simT * P.freq + fp[i]) * fa[i];
+    fy[i] += fv[i] * speedMul * dt;
+    fx[i] += (sway + wind * (18 + fs[i] * 24)) * dt;
+    if (fx[i] > W + 40) fx[i] -= W + 80;
+    else if (fx[i] < -40) fx[i] += W + 80;
+    if (fy[i] > surfaceY(fx[i]) - fs[i] * 0.5) {
+      if (L > 0 && !melting) {
+        const col = clamp(Math.round(fx[i] / W * (HN - 1)), 1, HN - 2);
+        if (accumPx[col] < maxAccum) accumPx[col] += L === 2 ? 2.2 : 1.2;
+      }
+      spawnFlake(i, false);
+    }
+  }
+
+  if (!melting) {
+    const grow = ACCUM_RATE * (0.3 + intensity) * dt;
+    roofAccum = Math.min(1, roofAccum + grow);
+    fenceAccum = Math.min(1, fenceAccum + grow);
+    for (const tr of trees) tr.accum = Math.min(1, tr.accum + grow);
+  } else {
+    const k = Math.exp(-dt * 1.4);
+    let total = 0;
+    roofAccum = 0.2 + (roofAccum - 0.2) * k;
+    fenceAccum = 0.2 + (fenceAccum - 0.2) * k;
+    total += roofAccum - 0.2 + fenceAccum - 0.2;
+    for (const tr of trees) { tr.accum = 0.2 + (tr.accum - 0.2) * k; total += tr.accum - 0.2; }
+    for (let i = 0; i < HN; i++) { accumPx[i] *= k; total += accumPx[i] * 0.02; }
+    meltTick += dt;
+    if (meltTick > 0.15) { meltTick = 0; refreshStaticLayers(); }
+    if (total < 0.05) { melting = false; refreshStaticLayers(); }
+  }
+
+  for (const tr of trees) {
+    const target = wind * 0.055 * tr.flex;
+    tr.vel += (-42 * (tr.angle - target) - 4.2 * tr.vel) * dt;
+    tr.angle += tr.vel * dt;
+  }
+
+  for (const cl of clouds) {
+    cl.x += (cl.v + wind * 20) * dt;
+    if (cl.x > W + 180) cl.x -= W + 640;
+    else if (cl.x < -460) cl.x += W + 640;
+  }
+
+  if (cabin && smoke.length < 42 && (smoke.length === 0 || simT - smoke[smoke.length - 1].born > 0.22)) {
+    smoke.push({
+      x: cabin.chimX + (Math.random() - 0.5) * 4, y: cabin.chimTop - 4,
+      r: (4 + Math.random() * 3) * cabin.s, born: simT, life: 4.5 + Math.random() * 2,
+      vy: (20 + Math.random() * 8) * (0.5 + cabin.s * 0.5), ph: Math.random() * Math.PI * 2
+    });
+  }
+  for (let i = smoke.length - 1; i >= 0; i--) {
+    const p = smoke[i];
+    const age = simT - p.born;
+    if (age > p.life) { smoke.splice(i, 1); continue; }
+    const rise = Math.max(6, p.vy - age * 3);
+    p.y -= rise * dt;
+    p.x += (wind * (26 + age * 22) + Math.sin(simT * 0.8 + p.ph) * 5) * dt;
+    p.r += 5.5 * dt;
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.age += dt;
+    if (p.type === 'clump') {
+      p.vy += 620 * dt;
+      p.x += (p.vx + wind * 30) * dt;
+      p.y += p.vy * dt;
+      const gy = surfaceY(p.x);
+      if (p.y >= gy) {
+        const col = clamp(Math.round(p.x / W * (HN - 1)), 1, HN - 2);
+        if (accumPx[col] < maxAccum) { accumPx[col] += p.r * 0.5; layerTick = 99; }
+        for (let j = 0; j < 7; j++) {
+          const a = Math.PI * (1 + Math.random());
+          const sp = 30 + Math.random() * 70;
+          particles.push({
+            type: 'puff', x: p.x, y: gy - 2,
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.5 - 20,
+            r: 3 + Math.random() * 5, age: 0, life: 0.55 + Math.random() * 0.3
+          });
+        }
+        particles.splice(i, 1);
+      } else if (p.age > p.life) particles.splice(i, 1);
+    } else {
+      p.vy += 60 * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.r += 26 * dt;
+      if (p.age > p.life) particles.splice(i, 1);
+    }
+  }
+
+  layerTick += dt;
+  if (layerTick > 2 && !melting) {
+    layerTick = 0;
+    refreshStaticLayers();
+  }
+  updateAudio();
+}
+
+/* ============================== drawing ============================== */
+
+function drawFlakes(layer) {
+  ctx.fillStyle = '#ffffff';
+  if (layer === 2) {
+    for (let i = 0; i < activeFlakes; i++) {
+      if (fl[i] !== 2) continue;
+      const d = fs[i] * 3.2;
+      ctx.globalAlpha = fo[i];
+      ctx.drawImage(softSprite, fx[i] - d / 2, fy[i] - d / 2, d, d);
+    }
+  } else if (layer === 1) {
+    ctx.beginPath();
+    for (let i = 0; i < activeFlakes; i++) {
+      if (fl[i] !== 1) continue;
+      ctx.moveTo(fx[i] + fs[i], fy[i]);
+      ctx.arc(fx[i], fy[i], fs[i], 0, 6.2832);
+    }
+    ctx.globalAlpha = 0.7;
+    ctx.fill();
+  } else {
+    ctx.globalAlpha = 0.45;
+    for (let i = 0; i < activeFlakes; i++) {
+      if (fl[i] !== 0) continue;
+      ctx.fillRect(fx[i], fy[i], fs[i], fs[i]);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawClouds(cyc) {
+  if (SC.clouds < 0.03 || !clouds.length) return;
+  const g = Lcld.g;
+  g.clearRect(Lcld.x, Lcld.y, Lcld.w, Lcld.h);
+  for (const cl of clouds) {
+    g.globalAlpha = cl.a;
+    g.drawImage(cloudSprites[cl.sp], cl.x, cl.y, 320 * cl.s, 140 * cl.s);
+  }
+  g.globalAlpha = 1;
+  // tint the whole cloud pass with one cycle-aware colour
+  const col = mixC(mixC([252, 252, 255], cyc.hor, 0.45), [56, 68, 104], cyc.night * 0.60);
+  g.globalCompositeOperation = 'source-in';
+  g.fillStyle = rgb(col, 0.82 + Math.max(0, (intensity - 0.55)) * 0.3);
+  g.fillRect(Lcld.x, Lcld.y, Lcld.w, Lcld.h);
+  g.globalCompositeOperation = 'source-over';
+  ctx.drawImage(Lcld.c, Lcld.x, Lcld.y, Lcld.w, Lcld.h);
+}
+
+function drawLake(cyc) {
+  const top = lakeGeom.top, bot = lakeGeom.bot, LH2 = bot - top;
+  // open water
+  const wg = ctx.createLinearGradient(0, top, 0, bot);
+  wg.addColorStop(0, rgb(mixC(cyc.hor, [52, 74, 124], 0.42)));
+  wg.addColorStop(1, rgb(mixC(cyc.mid, [24, 36, 70], 0.48)));
+  ctx.fillStyle = wg;
+  ctx.fillRect(0, top, W, LH2);
+  // mirrored world, sliced with a slow sine so it shimmers
+  if (reflC) {
+    ctx.globalAlpha = 0.5;
+    const sh = 6, n = Math.ceil(LH2 / sh);
+    for (let i = 0; i < n; i++) {
+      const sy = i * sh;
+      const dx = reduceMotion ? 0 : Math.sin(simT * 1.05 + i * 0.55) * (1 + i * 0.10);
+      ctx.drawImage(reflC, 0, sy, W, sh, dx, top + sy, W, Math.min(sh, LH2 - sy));
+    }
+    ctx.globalAlpha = 1;
+  }
+  // moonlight lane across the water
+  if (cyc.moon > 0.05) {
+    const mx = W * 0.79;
+    ctx.globalCompositeOperation = 'screen';
+    const mg = ctx.createLinearGradient(0, top, 0, bot);
+    mg.addColorStop(0, `rgba(214,228,255,${0.34 * cyc.moon})`);
+    mg.addColorStop(1, `rgba(214,228,255,${0.05 * cyc.moon})`);
+    ctx.fillStyle = mg;
+    for (let i = 0; i < Math.ceil(LH2 / 3); i++) {
+      const y = top + i * 3;
+      const rip = reduceMotion ? 0.8 : 0.55 + 0.45 * Math.sin(simT * 1.9 + i * 0.9);
+      const sw2 = (10 + i * 2.0) * (0.8 + 0.2 * rip);
+      ctx.globalAlpha = 0.35 + 0.65 * rip;
+      ctx.fillRect(mx - sw2 / 2 + (reduceMotion ? 0 : Math.sin(simT * 0.9 + i) * 3), y, sw2, 3);
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  // warm shimmer under the cottage windows (frosted scene)
+  if (cabin && !cabin.pool && cyc.night > 0.1) {
+    ctx.globalCompositeOperation = 'screen';
+    const a = 0.16 * cyc.night;
+    ctx.fillStyle = `rgba(255,180,96,${a})`;
+    for (let i = 0; i < Math.ceil(LH2 / 5); i++) {
+      const y = top + i * 5;
+      const sw2 = 26 + i * 3;
+      ctx.fillRect(cabin.cx - sw2 / 2 + (reduceMotion ? 0 : Math.sin(simT * 1.4 + i * 1.3) * 4), y, sw2, 3);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  // icy shoreline at the top edge
+  ctx.strokeStyle = 'rgba(240,247,255,0.75)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, top + 0.5); ctx.lineTo(W, top + 0.5); ctx.stroke();
+  const ig = ctx.createLinearGradient(0, top, 0, top + 7);
+  ig.addColorStop(0, 'rgba(120,150,210,0.35)');
+  ig.addColorStop(1, 'rgba(120,150,210,0)');
+  ctx.fillStyle = ig;
+  ctx.fillRect(0, top + 1, W, 7);
+  // snowy near shore blends over the bottom edge
+  const sg2 = ctx.createLinearGradient(0, bot - 10, 0, bot + 4);
+  sg2.addColorStop(0, 'rgba(233,239,251,0)');
+  sg2.addColorStop(1, 'rgba(233,239,251,1)');
+  ctx.fillStyle = sg2;
+  ctx.fillRect(0, bot - 10, W, 15);
+}
+
+function windowGlow(cyc) {
+  if (!cabin) return;
+  const cb = cabin, s = cb.s;
+  const base = 0.5 + 0.5 * cyc.night;
+  let avg = 0;
+  for (const wn of cb.windows) {
+    const flick = reduceMotion ? 1 :
+      clamp(0.93 + 0.05 * Math.sin(simT * 11 + wn.ph) + 0.04 * Math.sin(simT * 23.7 + wn.ph * 2.3), 0.85, 1.02);
+    const b = base * flick;
+    avg += b;
+    const gg = ctx.createLinearGradient(wn.x, wn.y, wn.x, wn.y + wn.h);
+    gg.addColorStop(0, rgb(mixC([190, 120, 55], [255, 216, 150], b)));
+    gg.addColorStop(1, rgb(mixC([160, 95, 40], [255, 180, 92], b)));
+    ctx.fillStyle = gg;
+    ctx.fillRect(wn.x, wn.y, wn.w, wn.h);
+    ctx.strokeStyle = 'rgba(46,26,12,0.9)';
+    ctx.lineWidth = Math.max(1.5, 2.2 * s);
+    ctx.beginPath();
+    ctx.moveTo(wn.x + wn.w / 2, wn.y); ctx.lineTo(wn.x + wn.w / 2, wn.y + wn.h);
+    ctx.moveTo(wn.x, wn.y + wn.h / 2); ctx.lineTo(wn.x + wn.w, wn.y + wn.h / 2);
+    ctx.stroke();
+    ctx.globalCompositeOperation = 'screen';
+    const cxm = wn.x + wn.w / 2, cym = wn.y + wn.h / 2, r = wn.w * 2.4;
+    const hg = ctx.createRadialGradient(cxm, cym, 0, cxm, cym, r);
+    hg.addColorStop(0, `rgba(255,170,80,${0.30 * b * (0.35 + 0.65 * cyc.night)})`);
+    hg.addColorStop(1, 'rgba(255,170,80,0)');
+    ctx.fillStyle = hg;
+    ctx.fillRect(cxm - r, cym - r, r * 2, r * 2);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  avg /= cb.windows.length;
+  if (!cb.pool) return;
+
+  ctx.globalCompositeOperation = 'screen';
+  const py = cb.baseY + 16 * s;
+  for (const wn of cb.windows) {
+    if (wn.y > cb.bodyTop + cb.bh) continue;
+    const wx = wn.x + wn.w / 2;
+    const wr = 88 * s * (1 + 0.35 * cyc.night);
+    const wa = (0.10 + 0.34 * cyc.night) * avg;
+    const wg = ctx.createRadialGradient(wx, py, 0, wx, py, wr);
+    wg.addColorStop(0, `rgba(255,181,96,${wa})`);
+    wg.addColorStop(1, 'rgba(255,170,90,0)');
+    ctx.fillStyle = wg;
+    ctx.save();
+    ctx.translate(wx, py);
+    ctx.scale(1, 0.34);
+    ctx.beginPath();
+    ctx.arc(0, 0, wr, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  const px = cb.cx;
+  const rx = 215 * s * (1 + 0.32 * cyc.night);
+  const pa = (0.12 + 0.62 * cyc.night) * avg;
+  const pg = ctx.createRadialGradient(px, py, 0, px, py, rx);
+  pg.addColorStop(0, `rgba(255,186,104,${pa})`);
+  pg.addColorStop(0.45, `rgba(255,172,92,${pa * 0.5})`);
+  pg.addColorStop(1, 'rgba(255,168,88,0)');
+  ctx.fillStyle = pg;
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.scale(1, 0.30);
+  ctx.beginPath();
+  ctx.arc(0, 0, rx, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  const rimA = (0.05 + 0.16 * cyc.night) * avg;
+  const ry2 = cb.bh * 1.25, rx2 = cb.bw * 0.95;
+  const rg = ctx.createRadialGradient(cb.cx, cb.bodyTop + cb.bh * 0.55, 0, cb.cx, cb.bodyTop + cb.bh * 0.55, rx2);
+  rg.addColorStop(0, `rgba(255,178,96,${rimA})`);
+  rg.addColorStop(1, 'rgba(255,178,96,0)');
+  ctx.fillStyle = rg;
+  ctx.save();
+  ctx.translate(cb.cx, cb.bodyTop + cb.bh * 0.55);
+  ctx.scale(1, ry2 / rx2);
+  ctx.beginPath();
+  ctx.arc(0, 0, rx2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function drawMist(cyc) {
+  if (SC.mist < 0.03) return;
+  const strength = SC.mist * (0.55 + 0.45 * Math.max(cyc.night * 0.4, 1 - cyc.night)) *
+                   (0.8 + (reduceMotion ? 0 : 0.2 * Math.sin(simT * 0.05)));
+  for (const [yc, hh, k] of [[0.645, 0.05, 0], [0.70, 0.07, 2.1]]) {
+    const a = strength * (0.10 + 0.06 * (reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(simT * 0.07 + k)));
+    const y0 = H * yc, y1 = y0 + H * hh;
+    const g2 = ctx.createLinearGradient(0, y0 - H * 0.03, 0, y1);
+    g2.addColorStop(0, 'rgba(216,226,246,0)');
+    g2.addColorStop(0.5, `rgba(216,226,246,${a})`);
+    g2.addColorStop(1, 'rgba(216,226,246,0)');
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, y0 - H * 0.03, W, y1 - y0 + H * 0.03);
+  }
+}
+
+/* photographic film grain overlay — applied once per resize, reused each frame */
+let grainCanvas = null;
+function buildGrain() {
+  grainCanvas = document.createElement('canvas');
+  grainCanvas.width = W; grainCanvas.height = H;
+  const g = grainCanvas.getContext('2d');
+  const img = g.createImageData(W, H);
+  const d = img.data;
+  const rng = mulberry32(7777);
+  for (let i = 0; i < d.length; i += 4) {
+    const v = 120 + rng() * 16;
+    d[i] = d[i+1] = d[i+2] = v;
+    d[i+3] = 12;
+  }
+  g.putImageData(img, 0, 0);
+}
+
+function draw() {
+  const cyc = evalCycle(cycleT);
+  const L = getPhotoLighting(cyc);
+
+  /* sky */
+  const sky = ctx.createLinearGradient(0, 0, 0, H * 0.78);
+  sky.addColorStop(0, rgb(cyc.top));
+  sky.addColorStop(0.52, rgb(cyc.mid));
+  sky.addColorStop(1, rgb(cyc.hor));
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+
+  /* low sun glow behind the trees — sunset sits left, dawn right */
+  if (cyc.golden > 0.02) {
+    ctx.globalCompositeOperation = 'screen';
+    const sx = W * (cycleT < 0.5 ? 0.30 : 0.72), sy = H * 0.60, sr = W * 0.42;
+    const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
+    sg.addColorStop(0, `rgba(255,196,120,${0.5 * cyc.golden})`);
+    sg.addColorStop(0.5, `rgba(255,170,110,${0.18 * cyc.golden})`);
+    sg.addColorStop(1, 'rgba(255,170,110,0)');
+    ctx.fillStyle = sg;
+    ctx.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  /* stars, Milky Way, moon */
+  if (cyc.stars > 0.01) {
+    ctx.fillStyle = '#ffffff';
+    for (const st of stars) {
+      const tw = reduceMotion ? 0.85 : 0.7 + 0.3 * Math.sin(simT * st.sp + st.ph);
+      ctx.globalAlpha = cyc.stars * st.a * tw;
+      ctx.fillRect(st.x, st.y, st.r, st.r);
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (SC.galaxy > 0.05 && cyc.stars > 0.02) {
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = cyc.stars * SC.galaxy;
+    ctx.drawImage(Lgal.c, Lgal.x, Lgal.y, Lgal.w, Lgal.h);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  if (cyc.moon > 0.01) {
+    const mx = W * 0.79, my = H * 0.17, mr = clamp(H * 0.030, 16, 34);
+    const hg = ctx.createRadialGradient(mx, my, mr * 0.4, mx, my, mr * 5.5);
+    hg.addColorStop(0, `rgba(230,238,255,${0.34 * cyc.moon})`);
+    hg.addColorStop(0.35, `rgba(226,235,255,${0.10 * cyc.moon})`);
+    hg.addColorStop(1, 'rgba(230,238,255,0)');
+    ctx.fillStyle = hg;
+    ctx.fillRect(mx - mr * 5.5, my - mr * 5.5, mr * 11, mr * 11);
+    const mg = ctx.createRadialGradient(mx - mr * 0.3, my - mr * 0.3, mr * 0.1, mx, my, mr);
+    mg.addColorStop(0, `rgba(252,253,255,${cyc.moon})`);
+    mg.addColorStop(1, `rgba(214,224,248,${cyc.moon})`);
+    ctx.fillStyle = mg;
+    ctx.beginPath();
+    ctx.arc(mx, my, mr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  /* clouds veil the moon and peaks */
+  drawClouds(cyc);
+
+  /* far mountains + storm haze */
+  ctx.drawImage(Lmnt.c, Lmnt.x, Lmnt.y, Lmnt.w, Lmnt.h);
+  const hazeA = Math.max(0, (intensity - 0.55) / 0.45) * 0.55;
+  if (hazeA > 0.01) {
+    const hz = ctx.createLinearGradient(0, H * 0.22, 0, H * 0.70);
+    hz.addColorStop(0, rgb(cyc.hor, 0));
+    hz.addColorStop(0.35, rgb(cyc.hor, hazeA * 0.85));
+    hz.addColorStop(1, rgb(cyc.hor, 0));
+    ctx.fillStyle = hz;
+    ctx.fillRect(0, H * 0.22, W, H * 0.48);
+  }
+
+  /* tree line + ground, then drifting valley mist */
+  ctx.drawImage(Ltre.c, Ltre.x, Ltre.y, Ltre.w, Ltre.h);
+  drawMist(cyc);
+
+  /* FAR snow — behind the mid-ground */
+  drawFlakes(0);
+
+  /* painter-ordered mid-ground: trees, cabin, lake */
+  for (const it of drawList) {
+    if (it.tree) {
+      const tr = it.tree;
+      ctx.save();
+      ctx.translate(Math.round(tr.x), Math.round(tr.baseY));
+      if (Math.abs(tr.angle) > 0.0005) ctx.rotate(tr.angle);
+      ctx.drawImage(tr.sprite, -tr.ax, -tr.ay, tr.sw, tr.sh);
+      ctx.restore();
+    } else if (it.cabin) {
+      ctx.drawImage(Lcab.c, Lcab.x, Lcab.y, Lcab.w, Lcab.h);
+    } else if (it.lake) {
+      drawLake(cyc);
+    }
+  }
+
+  /* MID snow — in front of trees, behind drifts */
+  drawFlakes(1);
+
+  /* foreground drifts */
+  ctx.drawImage(Ldft.c, Ldft.x, Ldft.y, Ldft.w, Ldft.h);
+
+  /* day/night tint pass over everything static */
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = rgb(cyc.tint);
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'source-over';
+
+  /* windows, halos, light pool — deliberately untinted */
+  windowGlow(cyc);
+
+  /* chimney smoke */
+  for (const p of smoke) {
+    const age = simT - p.born, f = age / p.life;
+    const a = 0.22 * (1 - f) * smooth(clamp(f * 4, 0, 1));
+    if (a <= 0.003) continue;
+    ctx.globalAlpha = a;
+    ctx.drawImage(smokeSprite, p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+  }
+  ctx.globalAlpha = 1;
+
+  /* falling clumps & powder puffs */
+  for (const p of particles) {
+    if (p.type === 'clump') {
+      ctx.globalAlpha = 0.95;
+      ctx.drawImage(softSprite, p.x - p.r * 1.4, p.y - p.r * 1.4, p.r * 2.8, p.r * 2.8);
+      ctx.fillStyle = '#f4f8ff';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.globalAlpha = 0.5 * (1 - p.age / p.life);
+      ctx.drawImage(softSprite, p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  /* sparkles on the drifts */
+  ctx.fillStyle = '#ffffff';
+  for (const sp of sparkles) {
+    const tw = reduceMotion ? 0.3 : Math.pow(Math.max(0, Math.sin(simT * sp.sp + sp.ph)), 10);
+    if (tw < 0.02) continue;
+    ctx.globalAlpha = tw * 0.75;
+    ctx.fillRect(sp.x, sp.y, 1.6, 1.6);
+  }
+  ctx.globalAlpha = 1;
+
+  /* blowing-snow veil during gusts */
+  if (gustEnv > 0.08) {
+    const va = gustEnv * (0.10 + intensity * 0.12);
+    for (let k = 0; k < 4; k++) {
+      const vy = H * (0.76 + k * 0.05);
+      const speed = (170 + k * 90) * gustDir;
+      let vx = ((simT * speed) % (W + 460)) - 230;
+      if (vx < -230) vx += W + 460;
+      ctx.globalAlpha = va * (1 - k * 0.15);
+      ctx.drawImage(softSprite, vx - 210, vy - 16, 420, 32);
+      ctx.drawImage(softSprite, vx - 210 - (W + 460) * gustDir, vy - 16, 420, 32);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* NEAR snow on top of everything */
+  drawFlakes(2);
+
+  /* gentle vignette */
+  const vg = ctx.createRadialGradient(W / 2, H * 0.45, H * 0.35, W / 2, H * 0.55, H * 0.95);
+  vg.addColorStop(0, 'rgba(10,14,32,0)');
+  vg.addColorStop(1, 'rgba(10,14,32,0.16)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+
+  /* fine film grain — the last photographic touch */
+  if (grainCanvas) {
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(grainCanvas, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+}
+
+/* ============================== main loop ============================== */
+
+let needsRender = true, lastT = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - lastT) / 1000 || 0.016);
+  lastT = now;
+  if (reduceMotion) {
+    updateAudio();
+    if (!needsRender) return;
+    needsRender = false;
+    draw();
+  } else {
+    step(dt);
+    draw();
+  }
+  if (!renderedOnce) {
+    renderedOnce = true;
+    requestAnimationFrame(() => fadeEl.classList.add('gone'));
+  }
+}
+
+/* ============================== controls ============================== */
+
+const snowRange = document.getElementById('snowRange');
+const snowLabel = document.getElementById('snowLabel');
+const timeRange = document.getElementById('timeRange');
+const autoTime = document.getElementById('autoTime');
+const windSeg = document.getElementById('windSeg');
+const sceneSeg = document.getElementById('sceneSeg');
+const audSeg = document.getElementById('audSeg');
+const soundOn = document.getElementById('soundOn');
+const volRange = document.getElementById('volRange');
+const resetBtn = document.getElementById('resetBtn');
+const panel = document.getElementById('panel');
+const handle = document.getElementById('handle');
+const fadeEl = document.getElementById('fade');
+
+sceneSeg.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b || +b.dataset.s === sceneIdx) return;
+  for (const btn of sceneSeg.querySelectorAll('button')) btn.classList.toggle('on', btn === b);
+  fadeEl.classList.add('switching');
+  setTimeout(() => {
+    sceneIdx = +b.dataset.s;
+    buildScene();
+    fadeEl.classList.remove('switching');
+  }, 300);
+});
+snowRange.addEventListener('input', () => {
+  intensity = parseFloat(snowRange.value);
+  snowLabel.textContent = intensity < 0.2 ? 'Light flurry' : intensity < 0.6 ? 'Steady' : intensity < 0.85 ? 'Heavy' : 'Snowstorm';
+  setActiveFlakes(targetFlakeCount());
+  needsRender = true;
+});
+timeRange.addEventListener('input', () => {
+  cycleT = parseFloat(timeRange.value);
+  if (autoCycle) { autoCycle = false; autoTime.checked = false; }
+  needsRender = true;
+});
+autoTime.addEventListener('change', () => {
+  autoCycle = autoTime.checked && !reduceMotion;
+  if (reduceMotion) autoTime.checked = false;
+  needsRender = true;
+});
+windSeg.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  windMode = b.dataset.w;
+  for (const btn of windSeg.querySelectorAll('button')) btn.classList.toggle('on', btn === b);
+});
+soundOn.addEventListener('change', () => {
+  audio.on = soundOn.checked;
+  if (audio.on) initAudio();
+  updateAudio();
+});
+volRange.addEventListener('input', () => {
+  audio.vol = parseFloat(volRange.value);
+  updateAudio();
+});
+audSeg.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  audio[b.dataset.a] = !audio[b.dataset.a];
+  b.classList.toggle('on', audio[b.dataset.a]);
+  updateAudio();
+});
+resetBtn.addEventListener('click', () => {
+  if (reduceMotion) {
+    roofAccum = fenceAccum = 0.2;
+    for (const tr of trees) { tr.accum = 0.2; renderTreeSprite(tr); }
+    accumPx.fill(0);
+    renderCabin(); renderDrifts(); buildReflection();
+    needsRender = true;
+  } else {
+    melting = true;
+  }
+});
+handle.addEventListener('click', () => panel.classList.toggle('open'));
+
+/* ============================== boot ============================== */
+
+if (reduceMotion) {
+  autoCycle = false;
+  autoTime.checked = false;
+  cycleT = 0.45;
+  timeRange.value = '0.45';
+}
+resize();
+if (reduceMotion) {
+  for (let i = 0; i < HN; i++) accumPx[i] = maxAccum * 0.5 * (0.7 + 0.3 * Math.sin(i * 0.4));
+  renderDrifts();
+  renderCabin();
+  buildReflection();
+  if (cabin) {
+    for (let i = 0; i < 4; i++) {
+      smoke.push({ x: cabin.chimX + i * 4, y: cabin.chimTop - 10 - i * 26, r: 7 + i * 6, born: -i, life: 8, vy: 0, ph: 0 });
+    }
+  }
+  simT = 2;
+}
+window.addEventListener('resize', resize);
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>
