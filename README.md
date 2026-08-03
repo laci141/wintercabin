@@ -63,6 +63,30 @@ the bottom of the frame, and flakes that brush dark shapes — pines, log walls 
 stick and slowly whiten them. A darkness map of the current photo decides where
 snow can settle. Switching series starts the cover afresh.
 
+## Deployment
+
+The site is plain static files, so it needs no build step. It is published to
+**Cloudflare Pages** on every push to `main` by
+`.github/workflows/deploy-cloudflare.yml`, which collects `index.html`,
+`procedural.html`, `img/` and `_headers` into a `public/` folder and uploads it
+with `wrangler pages deploy`.
+
+Two things have to exist before the first run:
+
+1. A Cloudflare Pages project named **`wintercabin`** (Workers & Pages → Create →
+   Pages → *Direct Upload*). It only has to be created once.
+2. Two repository secrets (Settings → Secrets and variables → Actions):
+   - `CLOUDFLARE_API_TOKEN` — an API token with the **Cloudflare Pages: Edit**
+     permission.
+   - `CLOUDFLARE_ACCOUNT_ID` — the account ID from the Cloudflare dashboard
+     sidebar.
+
+Alternatively, skip the workflow entirely and connect the GitHub repository in
+the Cloudflare Pages dashboard (*Connect to Git*): with **no build command** and
+the **repository root** as the output directory, Cloudflare builds and deploys
+on every push by itself. `_headers` works the same way in both setups — the
+photos are cached for a year, the HTML always revalidates.
+
 ## The procedural version
 
 The previous, fully code-drawn edition of this project — four procedurally

@@ -1,0 +1,37 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: cloudflare-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The site is plain static files — no build step. Collect just what the
+      # page needs so the repo's docs and CI config stay out of the deployment.
+      - name: Assemble the site
+        run: |
+          mkdir -p public
+          cp index.html procedural.html public/
+          cp -r img public/
+          cp _headers public/ 2>/dev/null || true
+          ls -R public | head -40
+
+      - name: Publish
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy public --project-name=wintercabin --branch=main
