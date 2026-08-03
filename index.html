@@ -15,9 +15,9 @@
   #fade.gone { opacity: 0; }
   #fade.switching { transition: opacity .3s ease; opacity: .92; }
 
-  /* Glass control panel — desktop: compact, right-hand side, ~half the old footprint */
+  /* Glass control panel — desktop: compact, top-right, closable */
   .glass-panel {
-    position: fixed; right: 20px; bottom: 20px; left: auto; width: 150px; z-index: 20;
+    position: fixed; right: 20px; top: 20px; bottom: auto; left: auto; width: 150px; z-index: 20;
     background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
     border: 1px solid rgba(255,255,255,.14);
     border-radius: 14px;
@@ -28,22 +28,50 @@
     color: #eef3fb;
     user-select: none;
   }
-  .glass-panel h1 { margin: 0 0 7px; font-size: 11px; font-weight: 600; letter-spacing: .03em; }
+  .glass-panel h1 { margin: 0 0 7px; font-size: 11px; font-weight: 600; letter-spacing: .03em; padding-right: 18px; }
   .glass-panel h1 span { opacity: .55; font-weight: 400; font-size: 8.5px; margin-left: 4px; }
+  .glass-panel.closed { display: none; }
+
+  /* close ✕ in the panel's top-right corner */
+  #closeBtn {
+    position: absolute; top: 7px; right: 7px; width: 18px; height: 18px;
+    border-radius: 6px; border: 1px solid rgba(255,255,255,.16);
+    background: rgba(255,255,255,.08); color: #eef3fb; cursor: pointer;
+    font: 600 10px/16px inherit; font-family: inherit; padding: 0;
+    transition: background .2s;
+  }
+  #closeBtn:hover { background: rgba(255,255,255,.18); }
+
+  /* reopen button, top-right corner of the screen */
+  #openBtn {
+    position: fixed; top: 20px; right: 20px; z-index: 19;
+    width: 34px; height: 34px; border-radius: 11px; cursor: pointer;
+    background: linear-gradient(160deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+    border: 1px solid rgba(255,255,255,.18); color: #eef3fb;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 26px -12px rgba(0,0,0,.7);
+    font-size: 15px; line-height: 32px; padding: 0; font-family: inherit;
+    display: none;
+  }
+  #openBtn:hover { background: rgba(255,255,255,.20); }
+  #openBtn.show { display: block; }
+
+  /* photo-series picker: 2 x 2 table */
+  .series-table { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
   .ctl { margin-bottom: 8px; }
   .ctl label { display: flex; justify-content: space-between; align-items: center; gap: 4px;
                font-size: 9px; opacity: .85; margin-bottom: 3px; letter-spacing: .02em; }
   .ctl input[type="range"] { width: 100%; accent-color: #ffb45c; height: 14px; margin: 0; cursor: pointer; }
   .seg { display: flex; gap: 3px; }
   .seg.stack { margin-top: 4px; }
-  .seg button {
+  .seg button, .series-table button {
     flex: 1; min-width: 0; font-size: 8px; padding: 4px 1px; border-radius: 7px; cursor: pointer;
     color: #eef3fb; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
     transition: background .2s, border-color .2s;
     font-family: inherit;
   }
-  .seg button:hover { background: rgba(255,255,255,.16); }
-  .seg button.on { background: rgba(255,180,92,.30); border-color: rgba(255,180,92,.55); }
+  .seg button:hover, .series-table button:hover { background: rgba(255,255,255,.16); }
+  .seg button.on, .series-table button.on { background: rgba(255,180,92,.30); border-color: rgba(255,180,92,.55); }
   .toggle { display: flex; align-items: center; gap: 4px; font-size: 8.5px; cursor: pointer; opacity: .9; }
   .toggle input { accent-color: #ffb45c; margin: 0; cursor: pointer; width: 11px; height: 11px; }
   #phaseLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -68,7 +96,7 @@
   /* Mobile: bottom drawer, lighter blur, everything 5px from both screen edges */
   @media (max-width: 700px) {
     .glass-panel {
-      left: 0; right: 0; bottom: 0; width: auto;
+      left: 0; right: 0; bottom: 0; top: auto; width: auto;
       border-radius: 18px 18px 0 0;
       border-left: none; border-right: none; border-bottom: none;
       backdrop-filter: blur(11px);
@@ -80,6 +108,9 @@
       max-height: 72vh;
     }
     .glass-panel.open { transform: none; overflow-y: auto; }
+    /* the drawer has its own handle — the desktop open/close pair is hidden */
+    .glass-panel.closed { display: block; }
+    #closeBtn, #openBtn { display: none !important; }
     #handle {
       display: block; width: 100%; background: none; border: none; color: #eef3fb;
       font: 600 13px/42px inherit; letter-spacing: .04em; cursor: pointer; padding: 0;
@@ -93,7 +124,8 @@
     .ctl label { font-size: 11.5px; margin-bottom: 4px; }
     .ctl input[type="range"] { height: 20px; }
     .seg { gap: 4px; }
-    .seg button { font-size: 10.5px; padding: 7px 2px; border-radius: 9px; }
+    .series-table { gap: 4px; }
+    .seg button, .series-table button { font-size: 10.5px; padding: 7px 2px; border-radius: 9px; }
     .toggle { font-size: 11px; gap: 5px; }
     .toggle input { width: 14px; height: 14px; }
     .hint { font-size: 10px; margin: 8px 0 0; }
@@ -105,8 +137,11 @@
 <body>
 <canvas id="scene"></canvas>
 
+<button id="openBtn" aria-label="Vezérlők">⚙</button>
+
 <div class="glass-panel" id="panel">
   <button id="handle">Winter Cabin</button>
+  <button id="closeBtn" aria-label="Bezárás">✕</button>
   <h1>Winter Cabin <span data-t="controls">vezérlők</span></h1>
 
   <div class="ctl">
@@ -121,9 +156,11 @@
 
   <div class="ctl">
     <label><span data-t="series">Fotósorozat</span></label>
-    <div class="seg" id="setSeg">
-      <button data-s="0" class="on" data-t="series1">1. sorozat</button>
-      <button data-s="1" data-t="series2">2. sorozat</button>
+    <div class="series-table" id="setSeg">
+      <button data-s="0" class="on" data-t="series1">Séria 1</button>
+      <button data-s="1" data-t="series2">Séria 2</button>
+      <button data-s="2" data-t="series3">Séria 3</button>
+      <button data-s="3" data-t="series4">Séria 4</button>
     </div>
   </div>
 
@@ -138,6 +175,11 @@
       <span class="toggle"><input type="checkbox" id="autoTime" checked> <span data-t="auto">Auto</span></span>
     </label>
     <input type="range" id="timeRange" min="0" max="1" step="0.001" value="0">
+  </div>
+
+  <div class="ctl">
+    <label for="speedRange"><span data-t="speed">Sebesség</span><span id="speedLabel">1.0×</span></label>
+    <input type="range" id="speedRange" min="0.2" max="4" step="0.1" value="1">
   </div>
 
   <div class="ctl">
@@ -182,50 +224,50 @@ const I18N = {
   hu: {
     _html: 'hu', _handle: 'Vezérlők',
     controls: 'vezérlők', language: 'Nyelv',
-    series: 'Fotósorozat', series1: '1. sorozat', series2: '2. sorozat',
+    series: 'Fotósorozat', series1: 'Séria 1', series2: 'Séria 2', series3: 'Séria 3', series4: 'Séria 4',
     snow: 'Hóesés', snowLevels: ['Szállingózás', 'Kitartó', 'Sűrű', 'Hóvihar'],
-    time: 'Napszak', auto: 'Auto',
+    time: 'Napszak', auto: 'Auto', speed: 'Sebesség',
     phases: ['Napkelte', 'Dél', 'Délután', 'Este'],
     wind: 'Szél', windCalm: 'Szélcsend', windBreezy: 'Szellő', windStormy: 'Viharos',
     sound: 'Hang', on: 'Be',
     audWind: 'Szél', audFire: 'Tűz', audPad: 'Háttér',
-    hint: 'A napszak csúszka a négy fotó — napkelte, dél, délután, este — között úszik át.'
+    hint: 'A hó lassan felgyűlik a fákon és a talajon. A napszak a négy fotó között úszik át.'
   },
   en: {
     _html: 'en', _handle: 'Controls',
     controls: 'controls', language: 'Language',
-    series: 'Photo series', series1: 'Series 1', series2: 'Series 2',
+    series: 'Photo series', series1: 'Series 1', series2: 'Series 2', series3: 'Series 3', series4: 'Series 4',
     snow: 'Snowfall', snowLevels: ['Light flurry', 'Steady', 'Heavy', 'Snowstorm'],
-    time: 'Time of day', auto: 'Auto',
+    time: 'Time of day', auto: 'Auto', speed: 'Speed',
     phases: ['Sunrise', 'Noon', 'Afternoon', 'Evening'],
     wind: 'Wind', windCalm: 'Calm', windBreezy: 'Breezy', windStormy: 'Stormy',
     sound: 'Sound', on: 'On',
     audWind: 'Wind', audFire: 'Fire', audPad: 'Ambience',
-    hint: 'The time-of-day slider crossfades between the four photos — sunrise, noon, afternoon, evening.'
+    hint: 'Snow slowly settles on the trees and the ground. The day crossfades between the four photos.'
   },
   ro: {
     _html: 'ro', _handle: 'Comenzi',
     controls: 'comenzi', language: 'Limbă',
-    series: 'Serie foto', series1: 'Seria 1', series2: 'Seria 2',
+    series: 'Serie foto', series1: 'Seria 1', series2: 'Seria 2', series3: 'Seria 3', series4: 'Seria 4',
     snow: 'Ninsoare', snowLevels: ['Fulgi rari', 'Constantă', 'Deasă', 'Viscol'],
-    time: 'Momentul zilei', auto: 'Auto',
+    time: 'Momentul zilei', auto: 'Auto', speed: 'Viteză',
     phases: ['Răsărit', 'Amiază', 'După-amiază', 'Seară'],
     wind: 'Vânt', windCalm: 'Calm', windBreezy: 'Briză', windStormy: 'Furtunos',
     sound: 'Sunet', on: 'Pornit',
     audWind: 'Vânt', audFire: 'Foc', audPad: 'Ambianță',
-    hint: 'Cursorul pentru momentul zilei trece lin între cele patru fotografii — răsărit, amiază, după-amiază, seară.'
+    hint: 'Zăpada se așază încet pe copaci și pe sol. Ziua trece lin între cele patru fotografii.'
   },
   de: {
     _html: 'de', _handle: 'Regler',
     controls: 'Regler', language: 'Sprache',
-    series: 'Fotoserie', series1: 'Serie 1', series2: 'Serie 2',
+    series: 'Fotoserie', series1: 'Serie 1', series2: 'Serie 2', series3: 'Serie 3', series4: 'Serie 4',
     snow: 'Schneefall', snowLevels: ['Leichtes Rieseln', 'Stetig', 'Dicht', 'Schneesturm'],
-    time: 'Tageszeit', auto: 'Auto',
+    time: 'Tageszeit', auto: 'Auto', speed: 'Tempo',
     phases: ['Sonnenaufgang', 'Mittag', 'Nachmittag', 'Abend'],
     wind: 'Wind', windCalm: 'Windstill', windBreezy: 'Brise', windStormy: 'Stürmisch',
     sound: 'Ton', on: 'An',
     audWind: 'Wind', audFire: 'Feuer', audPad: 'Ambiente',
-    hint: 'Der Tageszeit-Regler blendet sanft zwischen den vier Fotos über — Sonnenaufgang, Mittag, Nachmittag, Abend.'
+    hint: 'Der Schnee sammelt sich langsam auf Bäumen und Boden. Die Tageszeit blendet zwischen den vier Fotos über.'
   }
 };
 let lang = 'hu';
@@ -235,7 +277,9 @@ let T = I18N.hu;
 
 const SETS = [
   ['img/a-napkelte.jpg', 'img/a-del.jpg', 'img/a-delutan.jpg', 'img/a-este.jpg'],
-  ['img/b-napkelte.jpg', 'img/b-del.jpg', 'img/b-delutan.jpg', 'img/b-este.jpg']
+  ['img/b-napkelte.jpg', 'img/b-del.jpg', 'img/b-delutan.jpg', 'img/b-este.jpg'],
+  ['img/c-napkelte.jpg', 'img/c-del.jpg', 'img/c-delutan.jpg', 'img/c-este.jpg'],
+  ['img/d-napkelte.jpg', 'img/d-del.jpg', 'img/d-delutan.jpg', 'img/d-este.jpg']
 ];
 let setIdx = 0;
 const photos = SETS.map(set => set.map(src => {
@@ -245,7 +289,11 @@ const photos = SETS.map(set => set.map(src => {
 }));
 let photosReady = false;
 Promise.all(photos.flat().map(im => im.decode ? im.decode().catch(() => {}) : Promise.resolve()))
-  .then(() => { photosReady = true; });
+  .then(() => {
+    photosReady = true;
+    buildLumGrid();          // the darkness map needs the decoded photo
+    needsRender = true;
+  });
 
 /* ============================== state ============================== */
 
@@ -258,6 +306,7 @@ let simT = 0;
 let cycleT = 0;                     // 0 napkelte → 0.25 dél → 0.5 délután → 0.75 este
 let autoCycle = true;
 const CYCLE_SECONDS = 90;
+let cycleSpeed = 1;                 // 0.2× … 4× — a napszak-váltás üteme
 
 let intensity = 0.5;
 let windMode = 'breezy';
@@ -322,6 +371,95 @@ function setActiveFlakes(n) {
   activeFlakes = n;
 }
 
+/* ============ snow accumulation: ground drift + frost that sticks to the trees ============ */
+
+const HN = 160;
+const accumPx = new Float32Array(HN);
+let maxAccum = 60, accumSmoothT = 0;
+
+let frostCanvas = null, frostCtx = null, frostCount = 0;
+const FROST_MAX = 26000;
+
+/* low-res darkness map of the current photo: dark pixels (pines, logs) catch snow */
+const LGW = 120, LGH = 76;
+let lumGrid = null, lumPhase = -1;
+function buildLumGrid() {
+  lumGrid = null;
+  try {
+    const im = photos[setIdx][photoBlend(cycleT).i];
+    if (!im.naturalWidth) return;
+    const c = document.createElement('canvas');
+    c.width = LGW; c.height = LGH;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    const sc = Math.max(LGW / im.naturalWidth, LGH / im.naturalHeight);
+    const w = im.naturalWidth * sc, h = im.naturalHeight * sc;
+    g.drawImage(im, (LGW - w) / 2, (LGH - h) / 2, w, h);
+    const d = g.getImageData(0, 0, LGW, LGH).data;
+    const out = new Float32Array(LGW * LGH);
+    for (let i = 0; i < LGW * LGH; i++) {
+      out[i] = 1 - (d[i * 4] * 0.30 + d[i * 4 + 1] * 0.55 + d[i * 4 + 2] * 0.15) / 255;
+    }
+    lumGrid = out;
+  } catch (e) {
+    lumGrid = null;   // file:// tainted canvas — the y-band fallback below still works
+  }
+}
+function darknessAt(x, y) {
+  if (!lumGrid) {
+    const f = clamp((y / H - 0.35) / 0.5, 0, 1);
+    return 0.4 * f;
+  }
+  const gx = clamp((x / W * LGW) | 0, 0, LGW - 1);
+  const gy = clamp((y / H * LGH) | 0, 0, LGH - 1);
+  return lumGrid[gx + gy * LGW];
+}
+function accumAt(x) {
+  const f = clamp(x / W, 0, 1) * (HN - 1);
+  const i = f | 0;
+  return lerp(accumPx[i], accumPx[Math.min(i + 1, HN - 1)], f - i);
+}
+function stampFrost(x, y, s) {
+  const r = 1.0 + s * 0.6;
+  frostCtx.globalAlpha = 0.55;
+  frostCtx.fillStyle = '#f6faff';
+  frostCtx.beginPath();
+  frostCtx.arc(x, y, r, 0, 6.3);
+  frostCtx.fill();
+  frostCtx.globalAlpha = 1;
+  frostCount++;
+}
+function resetAccum() {
+  accumPx.fill(0);
+  frostCount = 0;
+  if (frostCtx) frostCtx.clearRect(0, 0, W, H);
+}
+function drawDrift() {
+  if (accumPx[0] < 0.5 && accumPx[HN >> 1] < 0.5 && accumPx[HN - 1] < 0.5) {
+    let any = false;
+    for (let i = 0; i < HN; i += 6) if (accumPx[i] > 0.5) { any = true; break; }
+    if (!any) return;
+  }
+  ctx.beginPath();
+  ctx.moveTo(-10, H + 10);
+  ctx.lineTo(-10, H + 2 - accumPx[0]);
+  for (let i = 1; i < HN; i++) ctx.lineTo(i / (HN - 1) * W, H + 2 - accumPx[i]);
+  ctx.lineTo(W + 10, H + 10);
+  ctx.closePath();
+  const gr = ctx.createLinearGradient(0, H - maxAccum, 0, H);
+  gr.addColorStop(0, 'rgba(250,252,255,0.96)');
+  gr.addColorStop(1, 'rgba(203,214,238,0.95)');
+  ctx.fillStyle = gr;
+  ctx.fill();
+  ctx.beginPath();
+  for (let i = 0; i < HN; i++) {
+    const x = i / (HN - 1) * W, y = H + 2 - accumPx[i];
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+}
+
 /* ============================== soft sprite for the gust veil ============================== */
 
 let softSprite = null;
@@ -348,6 +486,12 @@ function resize() {
   canvas.style.height = H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   softSprite = makeSoftSprite();
+  frostCanvas = document.createElement('canvas');
+  frostCanvas.width = W; frostCanvas.height = H;
+  frostCtx = frostCanvas.getContext('2d');
+  maxAccum = H * 0.09;
+  resetAccum();
+  buildLumGrid();
   setActiveFlakes(targetFlakeCount());
   needsRender = true;
 }
@@ -539,6 +683,10 @@ function draw() {
 
   const night = nightAmount(cycleT);
 
+  /* snow that has settled on the trees, then the growing ground drift */
+  if (frostCanvas && frostCount > 0) ctx.drawImage(frostCanvas, 0, 0);
+  drawDrift();
+
   /* blowing-snow veil during gusts */
   if (gustEnv > 0.08 && softSprite) {
     const va = gustEnv * (0.10 + intensity * 0.12);
@@ -562,13 +710,21 @@ function draw() {
 function step(dt) {
   simT += dt;
   if (autoCycle) {
-    cycleT = (cycleT + dt / CYCLE_SECONDS) % 1;
+    cycleT = (cycleT + dt * cycleSpeed / CYCLE_SECONDS) % 1;
     timeRange.value = cycleT.toFixed(3);
     updatePhaseLabel();
   }
   updateWind(dt);
 
+  /* the darkness map follows the currently shown photo */
+  const curPhase = photoBlend(cycleT).i;
+  if (curPhase !== lumPhase) {
+    lumPhase = curPhase;
+    buildLumGrid();
+  }
+
   const speedMul = 0.8 + intensity * 0.9;
+  const stickScale = (0.16 + intensity * 0.45) * dt;
   for (let i = 0; i < activeFlakes; i++) {
     const L = fl[i], P = FLAYER[L];
     const sway = Math.sin(simT * P.freq + fp[i]) * fa[i];
@@ -576,8 +732,32 @@ function step(dt) {
     fx[i] += (sway + wind * (18 + fs[i] * 24)) * dt;
     if (fx[i] > W + 40) fx[i] -= W + 80;
     else if (fx[i] < -40) fx[i] += W + 80;
-    if (fy[i] > H + 10) spawnFlake(i, false);
+
+    /* landing on the growing ground drift — the flake merges into it */
+    if (fy[i] > H + 2 - accumAt(fx[i]) - fs[i] * 0.4) {
+      const idx = clamp((fx[i] / W * (HN - 1)) | 0, 0, HN - 1);
+      if (accumPx[idx] < maxAccum) accumPx[idx] += 0.35 + fs[i] * 0.30 * (0.4 + intensity);
+      spawnFlake(i, false);
+      continue;
+    }
+    /* sticking to dark shapes — pines, log walls — mid-frame */
+    if (fy[i] > H * 0.26 && fy[i] < H * 0.92 && frostCount < FROST_MAX && fy[i] > 0) {
+      const dk = darknessAt(fx[i], fy[i]);
+      if (dk > 0.45 && Math.random() < dk * dk * stickScale) {
+        stampFrost(fx[i], fy[i], fs[i]);
+        spawnFlake(i, false);
+      }
+    }
   }
+  /* keep the drift soft and rounded */
+  accumSmoothT += dt;
+  if (accumSmoothT > 0.4) {
+    accumSmoothT = 0;
+    for (let i = 1; i < HN - 1; i++) {
+      accumPx[i] = (accumPx[i - 1] + 2 * accumPx[i] + accumPx[i + 1]) * 0.25;
+    }
+  }
+
   const target = targetFlakeCount();
   if (activeFlakes !== target) setActiveFlakes(target);
 
@@ -623,6 +803,10 @@ const panel = document.getElementById('panel');
 const handle = document.getElementById('handle');
 const fadeEl = document.getElementById('fade');
 const langSeg = document.getElementById('langSeg');
+const speedRange = document.getElementById('speedRange');
+const speedLabel = document.getElementById('speedLabel');
+const closeBtn = document.getElementById('closeBtn');
+const openBtn = document.getElementById('openBtn');
 
 function updatePhaseLabel() {
   const b = photoBlend(cycleT);
@@ -661,9 +845,23 @@ setSeg.addEventListener('click', e => {
   fadeEl.classList.add('switching');
   setTimeout(() => {
     setIdx = +btn.dataset.s;
+    resetAccum();          // fresh landscape, fresh snow cover
+    buildLumGrid();
     fadeEl.classList.remove('switching');
     needsRender = true;
   }, 300);
+});
+speedRange.addEventListener('input', () => {
+  cycleSpeed = parseFloat(speedRange.value);
+  speedLabel.textContent = cycleSpeed.toFixed(1) + '×';
+});
+closeBtn.addEventListener('click', () => {
+  panel.classList.add('closed');
+  openBtn.classList.add('show');
+});
+openBtn.addEventListener('click', () => {
+  panel.classList.remove('closed');
+  openBtn.classList.remove('show');
 });
 snowRange.addEventListener('input', () => {
   intensity = parseFloat(snowRange.value);

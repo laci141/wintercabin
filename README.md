@@ -8,7 +8,7 @@ Open `index.html` in a browser. No build step, no external libraries.
 ## How it works
 
 The backdrop is a set of eight photographs (in `img/`) — two series, each
-covering four times of day: **napkelte** (sunrise), **dél** (noon),
+covering four times of day (four series in total): **napkelte** (sunrise), **dél** (noon),
 **délután** (afternoon) and **este** (evening). The *Napszak* slider — or the
 Auto cycle (~90 s per full day) — crossfades smoothly between the four photos,
 so the day passes over the same valley. All animation is drawn live on a canvas
@@ -44,7 +44,8 @@ on (browser autoplay rules).
   time-of-day names and the snowfall levels switch instantly. The choice is
   remembered in `localStorage`; on a first visit the browser language decides,
   falling back to Hungarian.
-- **Photo series** — switches between the two photo series.
+- **Photo series** — a 2×2 table of four series; switching starts a fresh snow cover.
+- **Speed** — the auto day cycle runs at 0.2×–4×.
 - **Snowfall** — snowfall intensity.
 - **Time of day + Auto** — parks the day at any point or runs the full cycle.
 - **Wind** — calm / breezy / stormy.
