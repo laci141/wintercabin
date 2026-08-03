@@ -40,7 +40,7 @@ on (browser autoplay rules).
 
 ## Controls
 
-- **Language** — a four-cell table: HU / EN / RO / GE. The whole panel, the
+- **Language** — a four-cell table: HU / EN / RO / DE. The whole panel, the
   time-of-day names and the snowfall levels switch instantly. The choice is
   remembered in `localStorage`; on a first visit the browser language decides,
   falling back to Hungarian.
@@ -50,9 +50,11 @@ on (browser autoplay rules).
 - **Wind** — calm / breezy / stormy.
 - **Sound** — master volume and per-layer toggles.
 
-Below 700px the flake count drops and the control panel collapses into a bottom
-drawer. With `prefers-reduced-motion: reduce` the scene shows the calm evening
-photo with no falling snow.
+On desktop the panel sits in the bottom-right corner, deliberately compact so it
+stays out of the photograph. Below 700px the flake count drops and the panel
+becomes a bottom drawer with full-size, thumb-friendly controls, every row 5px
+from both screen edges. With `prefers-reduced-motion: reduce` the scene shows
+the calm evening photo with no falling snow.
 
 ## The procedural version
 

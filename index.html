@@ -15,47 +15,48 @@
   #fade.gone { opacity: 0; }
   #fade.switching { transition: opacity .3s ease; opacity: .92; }
 
-  /* Glass control panel */
+  /* Glass control panel — desktop: compact, right-hand side, ~half the old footprint */
   .glass-panel {
-    position: fixed; left: 20px; bottom: 20px; width: 252px; z-index: 20;
+    position: fixed; right: 20px; bottom: 20px; left: auto; width: 150px; z-index: 20;
     background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
     border: 1px solid rgba(255,255,255,.14);
-    border-radius: 20px;
+    border-radius: 14px;
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px); /* Safari — required */
-    box-shadow: 0 18px 50px -18px rgba(0,0,0,.75);
-    padding: 16px 16px 12px;
+    box-shadow: 0 14px 38px -16px rgba(0,0,0,.75);
+    padding: 10px 10px 8px;
     color: #eef3fb;
     user-select: none;
   }
-  .glass-panel h1 { margin: 0 0 9px; font-size: 15px; font-weight: 600; letter-spacing: .04em; }
-  .glass-panel h1 span { opacity: .55; font-weight: 400; font-size: 11px; margin-left: 6px; }
-  .ctl { margin-bottom: 10px; }
-  .ctl label { display: flex; justify-content: space-between; align-items: center;
-               font-size: 11.5px; opacity: .85; margin-bottom: 4px; letter-spacing: .03em; }
-  .ctl input[type="range"] { width: 100%; accent-color: #ffb45c; height: 18px; margin: 0; cursor: pointer; }
-  .seg { display: flex; gap: 4px; }
-  .seg.stack { margin-top: 5px; }
+  .glass-panel h1 { margin: 0 0 7px; font-size: 11px; font-weight: 600; letter-spacing: .03em; }
+  .glass-panel h1 span { opacity: .55; font-weight: 400; font-size: 8.5px; margin-left: 4px; }
+  .ctl { margin-bottom: 8px; }
+  .ctl label { display: flex; justify-content: space-between; align-items: center; gap: 4px;
+               font-size: 9px; opacity: .85; margin-bottom: 3px; letter-spacing: .02em; }
+  .ctl input[type="range"] { width: 100%; accent-color: #ffb45c; height: 14px; margin: 0; cursor: pointer; }
+  .seg { display: flex; gap: 3px; }
+  .seg.stack { margin-top: 4px; }
   .seg button {
-    flex: 1; font-size: 10.5px; padding: 5px 0; border-radius: 9px; cursor: pointer;
+    flex: 1; min-width: 0; font-size: 8px; padding: 4px 1px; border-radius: 7px; cursor: pointer;
     color: #eef3fb; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
     transition: background .2s, border-color .2s;
     font-family: inherit;
   }
   .seg button:hover { background: rgba(255,255,255,.16); }
   .seg button.on { background: rgba(255,180,92,.30); border-color: rgba(255,180,92,.55); }
-  .toggle { display: flex; align-items: center; gap: 5px; font-size: 11px; cursor: pointer; opacity: .9; }
-  .toggle input { accent-color: #ffb45c; margin: 0; cursor: pointer; }
-  .hint { font-size: 10.5px; opacity: .55; margin: 9px 0 0; line-height: 1.45; }
+  .toggle { display: flex; align-items: center; gap: 4px; font-size: 8.5px; cursor: pointer; opacity: .9; }
+  .toggle input { accent-color: #ffb45c; margin: 0; cursor: pointer; width: 11px; height: 11px; }
+  #phaseLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hint { font-size: 8px; opacity: .55; margin: 7px 0 0; line-height: 1.4; }
   #handle { display: none; }
 
   /* Language picker — a real 4-cell table with shared grid lines */
   .lang-table {
     display: grid; grid-template-columns: repeat(4, 1fr);
-    border: 1px solid rgba(255,255,255,.16); border-radius: 9px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,.16); border-radius: 7px; overflow: hidden;
   }
   .lang-table button {
-    font-size: 10.5px; font-weight: 600; letter-spacing: .06em; padding: 6px 0;
+    font-size: 8.5px; font-weight: 600; letter-spacing: .05em; padding: 5px 0;
     color: #eef3fb; background: rgba(255,255,255,.06); border: 0;
     border-left: 1px solid rgba(255,255,255,.16);
     cursor: pointer; font-family: inherit; transition: background .2s;
@@ -64,7 +65,7 @@
   .lang-table button:hover { background: rgba(255,255,255,.16); }
   .lang-table button.on { background: rgba(255,180,92,.30); color: #fff; }
 
-  /* Mobile: collapse into a bottom drawer, lighter blur */
+  /* Mobile: bottom drawer, lighter blur, everything 5px from both screen edges */
   @media (max-width: 700px) {
     .glass-panel {
       left: 0; right: 0; bottom: 0; width: auto;
@@ -73,7 +74,7 @@
       backdrop-filter: blur(11px);
       -webkit-backdrop-filter: blur(11px);
       box-shadow: 0 -12px 32px -14px rgba(0,0,0,.7);
-      padding: 0 16px 12px;
+      padding: 0 5px 10px;
       transform: translateY(calc(100% - 42px));
       transition: transform .35s cubic-bezier(.4, 0, .2, 1);
       max-height: 72vh;
@@ -87,6 +88,17 @@
     #handle::after { content: " ▴"; opacity: .6; }
     .glass-panel.open #handle::after { content: " ▾"; }
     .glass-panel h1 { display: none; }
+    /* full-size, thumb-friendly controls on touch screens */
+    .ctl { margin-bottom: 10px; }
+    .ctl label { font-size: 11.5px; margin-bottom: 4px; }
+    .ctl input[type="range"] { height: 20px; }
+    .seg { gap: 4px; }
+    .seg button { font-size: 10.5px; padding: 7px 2px; border-radius: 9px; }
+    .toggle { font-size: 11px; gap: 5px; }
+    .toggle input { width: 14px; height: 14px; }
+    .hint { font-size: 10px; margin: 8px 0 0; }
+    .lang-table { border-radius: 9px; }
+    .lang-table button { font-size: 11.5px; padding: 9px 0; letter-spacing: .06em; }
   }
 </style>
 </head>
@@ -103,7 +115,7 @@
       <button data-l="hu" class="on">HU</button>
       <button data-l="en">EN</button>
       <button data-l="ro">RO</button>
-      <button data-l="ge">GE</button>
+      <button data-l="de">DE</button>
     </div>
   </div>
 
@@ -203,7 +215,7 @@ const I18N = {
     audWind: 'Vânt', audFire: 'Foc', audPad: 'Ambianță',
     hint: 'Cursorul pentru momentul zilei trece lin între cele patru fotografii — răsărit, amiază, după-amiază, seară.'
   },
-  ge: {
+  de: {
     _html: 'de', _handle: 'Regler',
     controls: 'Regler', language: 'Sprache',
     series: 'Fotoserie', series1: 'Serie 1', series2: 'Serie 2',
@@ -704,9 +716,10 @@ if (reduceMotion) {
 }
 let saved = null;
 try { saved = localStorage.getItem('wc-lang'); } catch (e) { /* private mode */ }
-if (!saved) {
+if (saved === 'ge') saved = 'de';          // the button used to be labelled GE
+if (!I18N[saved]) {
   const nav = (navigator.language || 'hu').slice(0, 2).toLowerCase();
-  saved = nav === 'de' ? 'ge' : (I18N[nav] ? nav : 'hu');
+  saved = I18N[nav] ? nav : 'hu';
 }
 applyLang(saved);
 
