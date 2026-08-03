@@ -231,7 +231,7 @@ const I18N = {
     wind: 'Szél', windCalm: 'Szélcsend', windBreezy: 'Szellő', windStormy: 'Viharos',
     sound: 'Hang', on: 'Be',
     audWind: 'Szél', audFire: 'Tűz', audPad: 'Háttér',
-    hint: 'A hó lassan felgyűlik a fákon és a talajon. A napszak a négy fotó között úszik át.'
+    hint: 'A napszak csúszka a négy fotó — napkelte, dél, délután, este — között úszik át.'
   },
   en: {
     _html: 'en', _handle: 'Controls',
@@ -243,7 +243,7 @@ const I18N = {
     wind: 'Wind', windCalm: 'Calm', windBreezy: 'Breezy', windStormy: 'Stormy',
     sound: 'Sound', on: 'On',
     audWind: 'Wind', audFire: 'Fire', audPad: 'Ambience',
-    hint: 'Snow slowly settles on the trees and the ground. The day crossfades between the four photos.'
+    hint: 'The time-of-day slider crossfades between the four photos — sunrise, noon, afternoon, evening.'
   },
   ro: {
     _html: 'ro', _handle: 'Comenzi',
@@ -255,7 +255,7 @@ const I18N = {
     wind: 'Vânt', windCalm: 'Calm', windBreezy: 'Briză', windStormy: 'Furtunos',
     sound: 'Sunet', on: 'Pornit',
     audWind: 'Vânt', audFire: 'Foc', audPad: 'Ambianță',
-    hint: 'Zăpada se așază încet pe copaci și pe sol. Ziua trece lin între cele patru fotografii.'
+    hint: 'Cursorul pentru momentul zilei trece lin între cele patru fotografii — răsărit, amiază, după-amiază, seară.'
   },
   de: {
     _html: 'de', _handle: 'Regler',
@@ -267,7 +267,7 @@ const I18N = {
     wind: 'Wind', windCalm: 'Windstill', windBreezy: 'Brise', windStormy: 'Stürmisch',
     sound: 'Ton', on: 'An',
     audWind: 'Wind', audFire: 'Feuer', audPad: 'Ambiente',
-    hint: 'Der Schnee sammelt sich langsam auf Bäumen und Boden. Die Tageszeit blendet zwischen den vier Fotos über.'
+    hint: 'Der Tageszeit-Regler blendet sanft zwischen den vier Fotos über — Sonnenaufgang, Mittag, Nachmittag, Abend.'
   }
 };
 let lang = 'hu';
@@ -291,7 +291,6 @@ let photosReady = false;
 Promise.all(photos.flat().map(im => im.decode ? im.decode().catch(() => {}) : Promise.resolve()))
   .then(() => {
     photosReady = true;
-    buildLumGrid();          // the darkness map needs the decoded photo
     needsRender = true;
   });
 
@@ -371,95 +370,6 @@ function setActiveFlakes(n) {
   activeFlakes = n;
 }
 
-/* ============ snow accumulation: ground drift + frost that sticks to the trees ============ */
-
-const HN = 160;
-const accumPx = new Float32Array(HN);
-let maxAccum = 60, accumSmoothT = 0;
-
-let frostCanvas = null, frostCtx = null, frostCount = 0;
-const FROST_MAX = 26000;
-
-/* low-res darkness map of the current photo: dark pixels (pines, logs) catch snow */
-const LGW = 120, LGH = 76;
-let lumGrid = null, lumPhase = -1;
-function buildLumGrid() {
-  lumGrid = null;
-  try {
-    const im = photos[setIdx][photoBlend(cycleT).i];
-    if (!im.naturalWidth) return;
-    const c = document.createElement('canvas');
-    c.width = LGW; c.height = LGH;
-    const g = c.getContext('2d', { willReadFrequently: true });
-    const sc = Math.max(LGW / im.naturalWidth, LGH / im.naturalHeight);
-    const w = im.naturalWidth * sc, h = im.naturalHeight * sc;
-    g.drawImage(im, (LGW - w) / 2, (LGH - h) / 2, w, h);
-    const d = g.getImageData(0, 0, LGW, LGH).data;
-    const out = new Float32Array(LGW * LGH);
-    for (let i = 0; i < LGW * LGH; i++) {
-      out[i] = 1 - (d[i * 4] * 0.30 + d[i * 4 + 1] * 0.55 + d[i * 4 + 2] * 0.15) / 255;
-    }
-    lumGrid = out;
-  } catch (e) {
-    lumGrid = null;   // file:// tainted canvas — the y-band fallback below still works
-  }
-}
-function darknessAt(x, y) {
-  if (!lumGrid) {
-    const f = clamp((y / H - 0.35) / 0.5, 0, 1);
-    return 0.4 * f;
-  }
-  const gx = clamp((x / W * LGW) | 0, 0, LGW - 1);
-  const gy = clamp((y / H * LGH) | 0, 0, LGH - 1);
-  return lumGrid[gx + gy * LGW];
-}
-function accumAt(x) {
-  const f = clamp(x / W, 0, 1) * (HN - 1);
-  const i = f | 0;
-  return lerp(accumPx[i], accumPx[Math.min(i + 1, HN - 1)], f - i);
-}
-function stampFrost(x, y, s) {
-  const r = 1.0 + s * 0.6;
-  frostCtx.globalAlpha = 0.55;
-  frostCtx.fillStyle = '#f6faff';
-  frostCtx.beginPath();
-  frostCtx.arc(x, y, r, 0, 6.3);
-  frostCtx.fill();
-  frostCtx.globalAlpha = 1;
-  frostCount++;
-}
-function resetAccum() {
-  accumPx.fill(0);
-  frostCount = 0;
-  if (frostCtx) frostCtx.clearRect(0, 0, W, H);
-}
-function drawDrift() {
-  if (accumPx[0] < 0.5 && accumPx[HN >> 1] < 0.5 && accumPx[HN - 1] < 0.5) {
-    let any = false;
-    for (let i = 0; i < HN; i += 6) if (accumPx[i] > 0.5) { any = true; break; }
-    if (!any) return;
-  }
-  ctx.beginPath();
-  ctx.moveTo(-10, H + 10);
-  ctx.lineTo(-10, H + 2 - accumPx[0]);
-  for (let i = 1; i < HN; i++) ctx.lineTo(i / (HN - 1) * W, H + 2 - accumPx[i]);
-  ctx.lineTo(W + 10, H + 10);
-  ctx.closePath();
-  const gr = ctx.createLinearGradient(0, H - maxAccum, 0, H);
-  gr.addColorStop(0, 'rgba(250,252,255,0.96)');
-  gr.addColorStop(1, 'rgba(203,214,238,0.95)');
-  ctx.fillStyle = gr;
-  ctx.fill();
-  ctx.beginPath();
-  for (let i = 0; i < HN; i++) {
-    const x = i / (HN - 1) * W, y = H + 2 - accumPx[i];
-    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-  }
-  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-  ctx.lineWidth = 1.6;
-  ctx.stroke();
-}
-
 /* ============================== soft sprite for the gust veil ============================== */
 
 let softSprite = null;
@@ -485,13 +395,10 @@ function resize() {
   canvas.style.width = W + 'px';
   canvas.style.height = H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // crisp photo upscaling — the default 'low' filtering blurs the picture
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   softSprite = makeSoftSprite();
-  frostCanvas = document.createElement('canvas');
-  frostCanvas.width = W; frostCanvas.height = H;
-  frostCtx = frostCanvas.getContext('2d');
-  maxAccum = H * 0.09;
-  resetAccum();
-  buildLumGrid();
   setActiveFlakes(targetFlakeCount());
   needsRender = true;
 }
@@ -683,10 +590,6 @@ function draw() {
 
   const night = nightAmount(cycleT);
 
-  /* snow that has settled on the trees, then the growing ground drift */
-  if (frostCanvas && frostCount > 0) ctx.drawImage(frostCanvas, 0, 0);
-  drawDrift();
-
   /* blowing-snow veil during gusts */
   if (gustEnv > 0.08 && softSprite) {
     const va = gustEnv * (0.10 + intensity * 0.12);
@@ -716,15 +619,7 @@ function step(dt) {
   }
   updateWind(dt);
 
-  /* the darkness map follows the currently shown photo */
-  const curPhase = photoBlend(cycleT).i;
-  if (curPhase !== lumPhase) {
-    lumPhase = curPhase;
-    buildLumGrid();
-  }
-
   const speedMul = 0.8 + intensity * 0.9;
-  const stickScale = (0.16 + intensity * 0.45) * dt;
   for (let i = 0; i < activeFlakes; i++) {
     const L = fl[i], P = FLAYER[L];
     const sway = Math.sin(simT * P.freq + fp[i]) * fa[i];
@@ -732,30 +627,7 @@ function step(dt) {
     fx[i] += (sway + wind * (18 + fs[i] * 24)) * dt;
     if (fx[i] > W + 40) fx[i] -= W + 80;
     else if (fx[i] < -40) fx[i] += W + 80;
-
-    /* landing on the growing ground drift — the flake merges into it */
-    if (fy[i] > H + 2 - accumAt(fx[i]) - fs[i] * 0.4) {
-      const idx = clamp((fx[i] / W * (HN - 1)) | 0, 0, HN - 1);
-      if (accumPx[idx] < maxAccum) accumPx[idx] += 0.35 + fs[i] * 0.30 * (0.4 + intensity);
-      spawnFlake(i, false);
-      continue;
-    }
-    /* sticking to dark shapes — pines, log walls — mid-frame */
-    if (fy[i] > H * 0.26 && fy[i] < H * 0.92 && frostCount < FROST_MAX && fy[i] > 0) {
-      const dk = darknessAt(fx[i], fy[i]);
-      if (dk > 0.45 && Math.random() < dk * dk * stickScale) {
-        stampFrost(fx[i], fy[i], fs[i]);
-        spawnFlake(i, false);
-      }
-    }
-  }
-  /* keep the drift soft and rounded */
-  accumSmoothT += dt;
-  if (accumSmoothT > 0.4) {
-    accumSmoothT = 0;
-    for (let i = 1; i < HN - 1; i++) {
-      accumPx[i] = (accumPx[i - 1] + 2 * accumPx[i] + accumPx[i + 1]) * 0.25;
-    }
+    if (fy[i] > H + 10) spawnFlake(i, false);
   }
 
   const target = targetFlakeCount();
@@ -845,8 +717,6 @@ setSeg.addEventListener('click', e => {
   fadeEl.classList.add('switching');
   setTimeout(() => {
     setIdx = +btn.dataset.s;
-    resetAccum();          // fresh landscape, fresh snow cover
-    buildLumGrid();
     fadeEl.classList.remove('switching');
     needsRender = true;
   }, 300);
