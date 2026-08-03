@@ -40,11 +40,15 @@ on (browser autoplay rules).
 
 ## Controls
 
-- **Fotósorozat** — switches between the two photo series.
-- **Hóesés** — snowfall intensity.
-- **Napszak + Auto** — parks the day at any point or runs the full cycle.
-- **Szél** — calm / breezy / stormy.
-- **Hang** — master volume and per-layer toggles.
+- **Language** — a four-cell table: HU / EN / RO / GE. The whole panel, the
+  time-of-day names and the snowfall levels switch instantly. The choice is
+  remembered in `localStorage`; on a first visit the browser language decides,
+  falling back to Hungarian.
+- **Photo series** — switches between the two photo series.
+- **Snowfall** — snowfall intensity.
+- **Time of day + Auto** — parks the day at any point or runs the full cycle.
+- **Wind** — calm / breezy / stormy.
+- **Sound** — master volume and per-layer toggles.
 
 Below 700px the flake count drops and the control panel collapses into a bottom
 drawer. With `prefers-reduced-motion: reduce` the scene shows the calm evening

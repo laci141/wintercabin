@@ -49,6 +49,21 @@
   .hint { font-size: 10.5px; opacity: .55; margin: 9px 0 0; line-height: 1.45; }
   #handle { display: none; }
 
+  /* Language picker — a real 4-cell table with shared grid lines */
+  .lang-table {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border: 1px solid rgba(255,255,255,.16); border-radius: 9px; overflow: hidden;
+  }
+  .lang-table button {
+    font-size: 10.5px; font-weight: 600; letter-spacing: .06em; padding: 6px 0;
+    color: #eef3fb; background: rgba(255,255,255,.06); border: 0;
+    border-left: 1px solid rgba(255,255,255,.16);
+    cursor: pointer; font-family: inherit; transition: background .2s;
+  }
+  .lang-table button:first-child { border-left: 0; }
+  .lang-table button:hover { background: rgba(255,255,255,.16); }
+  .lang-table button.on { background: rgba(255,180,92,.30); color: #fff; }
+
   /* Mobile: collapse into a bottom drawer, lighter blur */
   @media (max-width: 700px) {
     .glass-panel {
@@ -79,52 +94,62 @@
 <canvas id="scene"></canvas>
 
 <div class="glass-panel" id="panel">
-  <button id="handle" aria-label="Vezérlők">Winter Cabin</button>
-  <h1>Winter Cabin <span>vezérlők</span></h1>
+  <button id="handle">Winter Cabin</button>
+  <h1>Winter Cabin <span data-t="controls">vezérlők</span></h1>
 
   <div class="ctl">
-    <label><span>Fotósorozat</span></label>
-    <div class="seg" id="setSeg">
-      <button data-s="0" class="on">1. sorozat</button>
-      <button data-s="1">2. sorozat</button>
+    <label><span data-t="language">Nyelv</span></label>
+    <div class="lang-table" id="langSeg">
+      <button data-l="hu" class="on">HU</button>
+      <button data-l="en">EN</button>
+      <button data-l="ro">RO</button>
+      <button data-l="ge">GE</button>
     </div>
   </div>
 
   <div class="ctl">
-    <label for="snowRange"><span>Hóesés</span><span id="snowLabel">Kitartó</span></label>
+    <label><span data-t="series">Fotósorozat</span></label>
+    <div class="seg" id="setSeg">
+      <button data-s="0" class="on" data-t="series1">1. sorozat</button>
+      <button data-s="1" data-t="series2">2. sorozat</button>
+    </div>
+  </div>
+
+  <div class="ctl">
+    <label for="snowRange"><span data-t="snow">Hóesés</span><span id="snowLabel">Kitartó</span></label>
     <input type="range" id="snowRange" min="0" max="1" step="0.01" value="0.5">
   </div>
 
   <div class="ctl">
-    <label for="timeRange"><span>Napszak</span>
+    <label for="timeRange"><span data-t="time">Napszak</span>
       <span id="phaseLabel" style="opacity:.7">Napkelte</span>
-      <span class="toggle"><input type="checkbox" id="autoTime" checked> Auto</span>
+      <span class="toggle"><input type="checkbox" id="autoTime" checked> <span data-t="auto">Auto</span></span>
     </label>
     <input type="range" id="timeRange" min="0" max="1" step="0.001" value="0">
   </div>
 
   <div class="ctl">
-    <label><span>Szél</span></label>
+    <label><span data-t="wind">Szél</span></label>
     <div class="seg" id="windSeg">
-      <button data-w="calm">Szélcsend</button>
-      <button data-w="breezy" class="on">Szellő</button>
-      <button data-w="stormy">Viharos</button>
+      <button data-w="calm" data-t="windCalm">Szélcsend</button>
+      <button data-w="breezy" class="on" data-t="windBreezy">Szellő</button>
+      <button data-w="stormy" data-t="windStormy">Viharos</button>
     </div>
   </div>
 
   <div class="ctl">
-    <label for="volRange"><span>Hang</span>
-      <span class="toggle"><input type="checkbox" id="soundOn"> Be</span>
+    <label for="volRange"><span data-t="sound">Hang</span>
+      <span class="toggle"><input type="checkbox" id="soundOn"> <span data-t="on">Be</span></span>
     </label>
     <input type="range" id="volRange" min="0" max="1" step="0.01" value="0.6">
     <div class="seg stack" id="audSeg">
-      <button data-a="wind" class="on">Szél</button>
-      <button data-a="fire" class="on">Tűz</button>
-      <button data-a="pad" class="on">Háttér</button>
+      <button data-a="wind" class="on" data-t="audWind">Szél</button>
+      <button data-a="fire" class="on" data-t="audFire">Tűz</button>
+      <button data-a="pad" class="on" data-t="audPad">Háttér</button>
     </div>
   </div>
 
-  <p class="hint">A napszak csúszka a négy fotó — napkelte, dél, délután, este — között úszik át.</p>
+  <p class="hint" data-t="hint">A napszak csúszka a négy fotó — napkelte, dél, délután, este — között úszik át.</p>
 </div>
 
 <div id="fade"></div>
@@ -139,13 +164,67 @@ const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
 const lerp = (a, b, f) => a + (b - a) * f;
 const smooth = f => f * f * (3 - 2 * f);
 
+/* ============================== i18n ============================== */
+
+const I18N = {
+  hu: {
+    _html: 'hu', _handle: 'Vezérlők',
+    controls: 'vezérlők', language: 'Nyelv',
+    series: 'Fotósorozat', series1: '1. sorozat', series2: '2. sorozat',
+    snow: 'Hóesés', snowLevels: ['Szállingózás', 'Kitartó', 'Sűrű', 'Hóvihar'],
+    time: 'Napszak', auto: 'Auto',
+    phases: ['Napkelte', 'Dél', 'Délután', 'Este'],
+    wind: 'Szél', windCalm: 'Szélcsend', windBreezy: 'Szellő', windStormy: 'Viharos',
+    sound: 'Hang', on: 'Be',
+    audWind: 'Szél', audFire: 'Tűz', audPad: 'Háttér',
+    hint: 'A napszak csúszka a négy fotó — napkelte, dél, délután, este — között úszik át.'
+  },
+  en: {
+    _html: 'en', _handle: 'Controls',
+    controls: 'controls', language: 'Language',
+    series: 'Photo series', series1: 'Series 1', series2: 'Series 2',
+    snow: 'Snowfall', snowLevels: ['Light flurry', 'Steady', 'Heavy', 'Snowstorm'],
+    time: 'Time of day', auto: 'Auto',
+    phases: ['Sunrise', 'Noon', 'Afternoon', 'Evening'],
+    wind: 'Wind', windCalm: 'Calm', windBreezy: 'Breezy', windStormy: 'Stormy',
+    sound: 'Sound', on: 'On',
+    audWind: 'Wind', audFire: 'Fire', audPad: 'Ambience',
+    hint: 'The time-of-day slider crossfades between the four photos — sunrise, noon, afternoon, evening.'
+  },
+  ro: {
+    _html: 'ro', _handle: 'Comenzi',
+    controls: 'comenzi', language: 'Limbă',
+    series: 'Serie foto', series1: 'Seria 1', series2: 'Seria 2',
+    snow: 'Ninsoare', snowLevels: ['Fulgi rari', 'Constantă', 'Deasă', 'Viscol'],
+    time: 'Momentul zilei', auto: 'Auto',
+    phases: ['Răsărit', 'Amiază', 'După-amiază', 'Seară'],
+    wind: 'Vânt', windCalm: 'Calm', windBreezy: 'Briză', windStormy: 'Furtunos',
+    sound: 'Sunet', on: 'Pornit',
+    audWind: 'Vânt', audFire: 'Foc', audPad: 'Ambianță',
+    hint: 'Cursorul pentru momentul zilei trece lin între cele patru fotografii — răsărit, amiază, după-amiază, seară.'
+  },
+  ge: {
+    _html: 'de', _handle: 'Regler',
+    controls: 'Regler', language: 'Sprache',
+    series: 'Fotoserie', series1: 'Serie 1', series2: 'Serie 2',
+    snow: 'Schneefall', snowLevels: ['Leichtes Rieseln', 'Stetig', 'Dicht', 'Schneesturm'],
+    time: 'Tageszeit', auto: 'Auto',
+    phases: ['Sonnenaufgang', 'Mittag', 'Nachmittag', 'Abend'],
+    wind: 'Wind', windCalm: 'Windstill', windBreezy: 'Brise', windStormy: 'Stürmisch',
+    sound: 'Ton', on: 'An',
+    audWind: 'Wind', audFire: 'Feuer', audPad: 'Ambiente',
+    hint: 'Der Tageszeit-Regler blendet sanft zwischen den vier Fotos über — Sonnenaufgang, Mittag, Nachmittag, Abend.'
+  }
+};
+let lang = 'hu';
+let T = I18N.hu;
+
 /* ============================== photos ============================== */
 
 const SETS = [
   ['img/a-napkelte.jpg', 'img/a-del.jpg', 'img/a-delutan.jpg', 'img/a-este.jpg'],
   ['img/b-napkelte.jpg', 'img/b-del.jpg', 'img/b-delutan.jpg', 'img/b-este.jpg']
 ];
-const PHASE_NAMES = ['Napkelte', 'Dél', 'Délután', 'Este'];
 let setIdx = 0;
 const photos = SETS.map(set => set.map(src => {
   const im = new Image();
@@ -531,11 +610,37 @@ const volRange = document.getElementById('volRange');
 const panel = document.getElementById('panel');
 const handle = document.getElementById('handle');
 const fadeEl = document.getElementById('fade');
+const langSeg = document.getElementById('langSeg');
 
 function updatePhaseLabel() {
   const b = photoBlend(cycleT);
-  phaseLabel.textContent = PHASE_NAMES[b.fade > 0.5 ? b.j : b.i];
+  phaseLabel.textContent = T.phases[b.fade > 0.5 ? b.j : b.i];
 }
+function updateSnowLabel() {
+  const i = intensity < 0.2 ? 0 : intensity < 0.6 ? 1 : intensity < 0.85 ? 2 : 3;
+  snowLabel.textContent = T.snowLevels[i];
+}
+function applyLang(code) {
+  if (!I18N[code]) return;
+  lang = code;
+  T = I18N[code];
+  document.documentElement.lang = T._html;
+  for (const el of document.querySelectorAll('[data-t]')) {
+    const v = T[el.dataset.t];
+    if (typeof v === 'string') el.textContent = v;
+  }
+  handle.setAttribute('aria-label', T._handle);
+  for (const b of langSeg.querySelectorAll('button')) b.classList.toggle('on', b.dataset.l === code);
+  updatePhaseLabel();
+  updateSnowLabel();
+  try { localStorage.setItem('wc-lang', code); } catch (e) { /* private mode */ }
+}
+
+langSeg.addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn || btn.dataset.l === lang) return;
+  applyLang(btn.dataset.l);
+});
 
 setSeg.addEventListener('click', e => {
   const btn = e.target.closest('button');
@@ -550,7 +655,7 @@ setSeg.addEventListener('click', e => {
 });
 snowRange.addEventListener('input', () => {
   intensity = parseFloat(snowRange.value);
-  snowLabel.textContent = intensity < 0.2 ? 'Szállingózás' : intensity < 0.6 ? 'Kitartó' : intensity < 0.85 ? 'Sűrű' : 'Hóvihar';
+  updateSnowLabel();
   setActiveFlakes(targetFlakeCount());
   needsRender = true;
 });
@@ -597,8 +702,15 @@ if (reduceMotion) {
   cycleT = 0.75;                 // este: ablakfényes, nyugodt alapkép
   timeRange.value = '0.75';
 }
+let saved = null;
+try { saved = localStorage.getItem('wc-lang'); } catch (e) { /* private mode */ }
+if (!saved) {
+  const nav = (navigator.language || 'hu').slice(0, 2).toLowerCase();
+  saved = nav === 'de' ? 'ge' : (I18N[nav] ? nav : 'hu');
+}
+applyLang(saved);
+
 resize();
-updatePhaseLabel();
 window.addEventListener('resize', resize);
 requestAnimationFrame(frame);
 
