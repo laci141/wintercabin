@@ -17,11 +17,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      # Fail early and legibly: without these the wrangler step dies with a
-      # generic "non-interactive environment" message that hides the real cause.
+      # Until the two Cloudflare secrets exist the run stays green and only
+      # warns — a red X every push would suggest the site itself is broken.
       - name: Check Cloudflare credentials
+        id: creds
         env:
           TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -30,15 +31,19 @@ jobs:
           [ -z "$TOKEN" ] && missing="$missing CLOUDFLARE_API_TOKEN"
           [ -z "$ACCOUNT" ] && missing="$missing CLOUDFLARE_ACCOUNT_ID"
           if [ -n "$missing" ]; then
-            echo "::error::Missing repository secret(s):$missing — add them under" \
-                 "Settings → Secrets and variables → Actions. See README.md ▸ Deployment."
-            exit 1
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Deploy skipped — missing repository secret(s):$missing." \
+                 "Add them under Settings → Secrets and variables → Actions," \
+                 "then re-run this workflow. See README.md ▸ Deployment."
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            echo "Both Cloudflare secrets are present."
           fi
-          echo "Both Cloudflare secrets are present."
 
       # The site is plain static files — no build step. Collect just what the
       # page needs so the repo's docs and CI config stay out of the deployment.
       - name: Assemble the site
+        if: steps.creds.outputs.ok == 'true'
         run: |
           mkdir -p public
           cp index.html procedural.html public/
@@ -47,6 +52,7 @@ jobs:
           ls -R public | head -40
 
       - name: Publish
+        if: steps.creds.outputs.ok == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
