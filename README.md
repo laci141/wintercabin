@@ -7,12 +7,12 @@ Open `index.html` in a browser. No build step, no external libraries.
 
 ## How it works
 
-The backdrop is a set of eight photographs (in `img/`) — two series, each
-covering four times of day (four series in total): **napkelte** (sunrise), **dél** (noon),
+The backdrop is a set of sixteen photographs (in `img/`) — four series, each
+covering four times of day: **napkelte** (sunrise), **dél** (noon),
 **délután** (afternoon) and **este** (evening). The *Napszak* slider — or the
-Auto cycle (~90 s per full day) — crossfades smoothly between the four photos,
-so the day passes over the same valley. All animation is drawn live on a canvas
-above the photo:
+Auto cycle (~90 s per full day at 1×, adjustable 0.2×–4×) — crossfades smoothly
+between the four photos, so the day passes over the same valley. All animation
+is drawn live on a canvas above the photo:
 
 - **Falling snow** — three depth layers (~350–500 flakes on desktop, stored in
   flat typed arrays): tiny slow far flakes, swaying mid flakes, and fast
@@ -51,11 +51,17 @@ on (browser autoplay rules).
 - **Wind** — calm / breezy / stormy.
 - **Sound** — master volume and per-layer toggles.
 
-On desktop the panel sits in the bottom-right corner, deliberately compact so it
-stays out of the photograph. Below 700px the flake count drops and the panel
-becomes a bottom drawer with full-size, thumb-friendly controls, every row 5px
-from both screen edges. With `prefers-reduced-motion: reduce` the scene shows
-the calm evening photo with no falling snow.
+On desktop the compact panel sits in the top-right corner; the ✕ in its corner
+closes it and a small glass button in the top-right corner of the screen brings
+it back. Below 700px the flake count drops and the panel becomes a bottom
+drawer with full-size, thumb-friendly controls, every row 5px from both screen
+edges. With `prefers-reduced-motion: reduce` the scene shows the calm evening
+photo with no falling snow.
+
+Snow builds up while you watch: every landed flake raises a ground drift along
+the bottom of the frame, and flakes that brush dark shapes — pines, log walls —
+stick and slowly whiten them. A darkness map of the current photo decides where
+snow can settle. Switching series starts the cover afresh.
 
 ## The procedural version
 
