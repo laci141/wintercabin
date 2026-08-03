@@ -1,0 +1,12 @@
+{
+  // Cloudflare Workers static assets. Committing this stops the build from
+  // auto-generating a config on every deploy, and pairs with .assetsignore
+  // so the repo's plumbing (.git, .github, docs) is never served.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wintercabin",
+  "compatibility_date": "2026-08-03",
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "."
+  }
+}

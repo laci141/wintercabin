@@ -44,7 +44,7 @@ on (browser autoplay rules).
   time-of-day names and the snowfall levels switch instantly. The choice is
   remembered in `localStorage`; on a first visit the browser language decides,
   falling back to Hungarian.
-- **Photo series** — a 2×2 table of four series; switching starts a fresh snow cover.
+- **Photo series** — a 2×2 table of four series.
 - **Speed** — the auto day cycle runs at 0.2×–4×.
 - **Snowfall** — snowfall intensity.
 - **Time of day + Auto** — parks the day at any point or runs the full cycle.
@@ -58,34 +58,28 @@ drawer with full-size, thumb-friendly controls, every row 5px from both screen
 edges. With `prefers-reduced-motion: reduce` the scene shows the calm evening
 photo with no falling snow.
 
-Snow builds up while you watch: every landed flake raises a ground drift along
-the bottom of the frame, and flakes that brush dark shapes — pines, log walls —
-stick and slowly whiten them. A darkness map of the current photo decides where
-snow can settle. Switching series starts the cover afresh.
+The snow only falls — nothing settles. An earlier version grew a drift along
+the bottom of the frame and whitened the pines, but it veiled the photograph
+and read as haze, so the flakes now simply pass through the scene.
 
 ## Deployment
 
-The site is plain static files, so it needs no build step. It is published to
-**Cloudflare Pages** on every push to `main` by
-`.github/workflows/deploy-cloudflare.yml`, which collects `index.html`,
-`procedural.html`, `img/` and `_headers` into a `public/` folder and uploads it
-with `wrangler pages deploy`.
+The site is plain static files, so it needs no build step. The repository is
+connected to **Cloudflare Workers** (Workers & Pages → the `wintercabin`
+project), which rebuilds and redeploys on every push to `main` and serves the
+result from `https://wintercabin.laszlokasa6.workers.dev`.
 
-Two things have to exist before the first run:
+Two committed files shape that deployment:
 
-1. A Cloudflare Pages project named **`wintercabin`** (Workers & Pages → Create →
-   Pages → *Direct Upload*). It only has to be created once.
-2. Two repository secrets (Settings → Secrets and variables → Actions):
-   - `CLOUDFLARE_API_TOKEN` — an API token with the **Cloudflare Pages: Edit**
-     permission.
-   - `CLOUDFLARE_ACCOUNT_ID` — the account ID from the Cloudflare dashboard
-     sidebar.
+- `wrangler.jsonc` — names the Worker and points its static assets at the
+  repository root. Committing it stops the build from generating a throwaway
+  config on every run.
+- `.assetsignore` — excludes everything that is not part of the site. Without
+  it the build uploads the repository plumbing (`.git`, `.github`) and the docs
+  as publicly readable files; only `index.html`, `procedural.html`, `img/` and
+  `_headers` should be served.
 
-Alternatively, skip the workflow entirely and connect the GitHub repository in
-the Cloudflare Pages dashboard (*Connect to Git*): with **no build command** and
-the **repository root** as the output directory, Cloudflare builds and deploys
-on every push by itself. `_headers` works the same way in both setups — the
-photos are cached for a year, the HTML always revalidates.
+`_headers` caches the photos for a year and keeps the HTML revalidating.
 
 ## The procedural version
 

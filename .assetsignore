@@ -1,0 +1,10 @@
+# Everything here is excluded from the deployed site (gitignore syntax).
+# The assets directory is the repo root, so without this the build uploads
+# the git plumbing and the CI config as publicly readable files.
+.git
+.github
+.wrangler
+.assetsignore
+wrangler.jsonc
+README.md
+LICENSE
