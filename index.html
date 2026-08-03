@@ -205,11 +205,11 @@ function dab(g, x, y, w, h, rot, col, al) {
 
 const pick = (rng, arr) => arr[(rng()*arr.length)|0];
 
-function paintSpruce(g, cx, baseY, h, seed, hazeF, L, accum, frost) {
+function paintSpruce(g, cx, baseY, h, seed, hazeF, L, accum, frost, litDir) {
   const rng = mulberry32(seed);
   const topY = baseY - h;
   const maxR = h*0.27;
-  const lit = Math.sign(SUNX - cx) || 1;
+  const lit = litDir || (Math.sign(SUNX - cx) || 1);
   const nL = isMobile ? 16 : 26;
   const acc = accum === undefined ? 1 : clamp(accum, 0, 1);
   // trunk showing between the lowest branches
@@ -497,17 +497,23 @@ function buildCabin() {
   const bodyTop = baseY - bh;
   const roofTop = bodyTop - 88 * s;
   const eave = 26 * s;
+  // 3/4 photographic view: front gable wall left of the corner FX,
+  // side wall receding to the right and rising toward the horizon
+  const fw = 128 * s, sw2 = 150 * s, rise = sw2 * 0.15;
+  const FX = cx + bw * 0.12;
+  const apexX = FX - fw / 2, apexY = bodyTop - 58 * s;
   const winW = 30 * s, winH = 37 * s, winY = bodyTop + 32 * s;
   cabin = {
     s, cx, baseY, bw, bh, bodyTop, roofTop, eave, fence: C.fence, pool: C.pool,
+    fw, sw2, rise, FX, apexX, apexY,
     windows: [
-      { x: cx - 52 * s - winW / 2, y: winY, w: winW, h: winH, ph: 0.0 },
-      { x: cx + 52 * s - winW / 2, y: winY, w: winW, h: winH, ph: 2.1 },
-      { x: cx - 11 * s, y: roofTop + 34 * s, w: 22 * s, h: 24 * s, ph: 4.4 }
+      { x: FX - fw * 0.86, y: winY, w: winW, h: winH, ph: 0.0 },
+      { x: FX - fw * 0.52, y: winY, w: winW, h: winH, ph: 2.1 }
     ],
-    chimX: cx + bw * 0.24, chimW: 26 * s,
-    chimTop: roofTop - 14 * s,
-    roofBox: { x: cx - bw / 2 - eave, y: roofTop - 40 * s, w: bw + eave * 2, h: (bodyTop - roofTop) + 50 * s },
+    chimX: apexX + sw2 * 0.45 + 8 * s, chimW: 17 * s,
+    chimTop: apexY - rise * 0.42 - 38 * s,
+    roofBox: { x: apexX - fw * 0.65, y: apexY - rise - 26 * s,
+               w: sw2 + fw * 1.05, h: (bodyTop - apexY) + rise + 36 * s },
     fenceX0: cx - bw * 2.05, fenceX1: cx + bw * 1.25
   };
 }
@@ -760,114 +766,14 @@ function renderTreeSprite(tr) {
   tr.sw = sw; tr.sh = sh; tr.ax = sw / 2; tr.ay = sh;
   const g = tr.sprite.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const rng = mulberry32(tr.seed);
   const cx = sw / 2, baseY = sh;
 
-  const tw = Math.max(3, tr.w * 0.07);
-  g.fillStyle = SC.frost ? '#5a5148' : '#3a2a1d';
-  g.fillRect(cx - tw / 2, baseY - tr.h * 0.24, tw, tr.h * 0.24);
-
-  const shade = 0.9 + rng() * 0.2;
-  let green = [Math.round(26 * shade), Math.round(56 * shade), Math.round(47 * shade)];
-  let dark = [Math.round(16 * shade), Math.round(38 * shade), Math.round(34 * shade)];
-  if (SC.frost) { // pale, rime-covered foliage
-    green = mixC(green, [172, 190, 210], 0.55);
-    dark = mixC(dark, [120, 140, 168], 0.45);
-  }
-  const y0 = pad * 0.55, y1 = baseY - tr.h * 0.12;
-  const nt = tr.tiers, segs = 5;
-  const thBase = clamp(tr.w * 0.115, 2.5, 13) * (0.20 + 0.80 * tr.accum);
-
-  const tiers = [];
-  for (let k = 0; k < nt; k++) {
-    const apexY = y0 + (y1 - y0) * (k / nt);
-    const botY = Math.min(y1, y0 + (y1 - y0) * ((k + 1.45) / nt));
-    const hw = (tr.w / 2) * (0.18 + 0.82 * Math.pow((k + 1) / nt, 0.92));
-    const Lp = [], Rp = [];
-    for (let j = 0; j <= segs; j++) {
-      const f = j / segs;
-      const xx = hw * Math.pow(f, 1.1);
-      const yy = apexY + (botY - apexY) * f;
-      const jag = j ? (rng() - 0.35) * hw * 0.20 : 0;
-      const dip = j ? rng() * hw * 0.13 : 0;
-      Lp.push([cx - xx - jag, yy + dip]);
-      Rp.push([cx + xx + (rng() - 0.35) * hw * 0.20, yy + rng() * hw * 0.13 * (j ? 1 : 0)]);
-    }
-    tiers.push({ apexY, botY, hw, Lp, Rp });
-  }
-
-  for (let k = nt - 1; k >= 0; k--) {
-    const T = tiers[k];
-    g.beginPath();
-    g.moveTo(cx, T.apexY);
-    for (let j = 1; j <= segs; j++) g.lineTo(T.Lp[j][0], T.Lp[j][1]);
-    const bl = T.Lp[segs], br = T.Rp[segs];
-    for (let j = 1; j < 6; j++) {
-      const f = j / 6;
-      g.lineTo(lerp(bl[0], br[0], f), lerp(bl[1], br[1], f) + (j % 2 ? T.hw * 0.11 : -T.hw * 0.02) + rng() * 2);
-    }
-    g.lineTo(br[0], br[1]);
-    for (let j = segs - 1; j >= 1; j--) g.lineTo(T.Rp[j][0], T.Rp[j][1]);
-    g.closePath();
-    g.fillStyle = rgb(green);
-    g.fill();
-    g.save();
-    g.clip();
-    g.fillStyle = rgb(dark, 0.45);
-    g.fillRect(cx, T.apexY - 2, T.hw + 6, T.botY - T.apexY + 6);
-    g.restore();
-  }
-
-  g.fillStyle = SC.frost ? '#fbfdff' : '#f6faff';
-  for (let k = 0; k < nt; k++) {
-    const T = tiers[k];
-    const th = thBase * (0.7 + 0.55 * (k / nt));
-    for (const side of [-1, 1]) {
-      const P = side < 0 ? T.Lp : T.Rp;
-      const start = 0.42;
-      const pts = [];
-      for (let j = 0; j <= segs; j++) {
-        if (j / segs < start) continue;
-        pts.push(P[j]);
-      }
-      if (pts.length < 2) continue;
-      const n2 = pts.length;
-      g.beginPath();
-      g.moveTo(pts[0][0], pts[0][1]);
-      for (const p of pts) g.lineTo(p[0], p[1]);
-      const last = pts[n2 - 1];
-      g.quadraticCurveTo(last[0] + side * th * 0.55, last[1] - th * 0.25, last[0] - side * th * 0.15, last[1] - th);
-      for (let i = n2 - 2; i >= 0; i--) {
-        const p = pts[i], mid = pts[i + 1];
-        const t = th * (0.5 + 0.5 * (i / (n2 - 1)));
-        g.quadraticCurveTo((p[0] + mid[0]) / 2 + side * t * 0.15, (p[1] + mid[1]) / 2 - t * 1.3,
-                           p[0] - side * t * 0.1, p[1] - t);
-      }
-      g.closePath();
-      g.fill();
-    }
-  }
-
-  g.globalAlpha = 0.30;
-  g.fillStyle = '#a9c0ea';
-  for (let k = 0; k < nt; k++) {
-    const T = tiers[k];
-    const th = thBase * (0.7 + 0.55 * (k / nt));
-    g.beginPath();
-    g.moveTo(T.Rp[2][0], T.Rp[2][1]);
-    g.lineTo(T.Rp[segs][0], T.Rp[segs][1]);
-    g.lineTo(T.Rp[segs][0] - th * 0.15, T.Rp[segs][1] - th * 0.45);
-    g.lineTo(T.Rp[2][0], T.Rp[2][1] - th * 0.3);
-    g.closePath();
-    g.fill();
-  }
-  g.globalAlpha = 1;
-
-  const capR = clamp(tr.w * 0.075, 2.5, 9) * (0.45 + 0.55 * tr.accum) + 1.5;
-  g.fillStyle = '#f8fbff';
-  g.beginPath();
-  g.ellipse(cx, y0 + capR * 0.6, capR * 1.1, capR, 0, 0, Math.PI * 2);
-  g.fill();
+  // photographic dab-painted spruce; light side follows the tree's world position
+  const L = getPhotoLighting(evalCycle(cycleT));
+  const litDir = Math.sign(SUNX - tr.x) || 1;
+  // farther (smaller) trees sit deeper in the winter haze
+  const hazeF = clamp(0.20 + (1 - tr.h / (H * 0.24)) * 0.30, 0.15, 0.5);
+  paintSpruce(g, cx, baseY, tr.h, tr.seed, hazeF, L, tr.accum, !!SC.frost, litDir);
 }
 
 /* ---------- cabin + fence layer ---------- */
@@ -912,90 +818,160 @@ function renderCabin() {
     g.lineCap = 'butt';
   }
 
-  const x0 = cb.cx - cb.bw / 2, y0 = cb.bodyTop;
-  g.fillStyle = '#63492f';
-  g.fillRect(x0, y0, cb.bw, cb.bh);
-  g.fillStyle = 'rgba(30,16,6,0.30)';
-  for (let y = y0 + 10 * s; y < y0 + cb.bh; y += 15 * s) g.fillRect(x0, y, cb.bw, 3.2 * s);
-  g.fillStyle = 'rgba(255,220,170,0.05)';
-  for (let y = y0 + 3 * s; y < y0 + cb.bh; y += 15 * s) g.fillRect(x0, y, cb.bw, 4 * s);
-  g.fillStyle = '#4d3822';
-  g.fillRect(x0 - 3 * s, y0, 8 * s, cb.bh);
-  g.fillRect(x0 + cb.bw - 5 * s, y0, 8 * s, cb.bh);
+  /* ---- photographic 3/4-view log cabin (proto4 engine) ---- */
+  const L = getPhotoLighting(evalCycle(cycleT));
+  const rng = mulberry32(4040);
+  dabRng = mulberry32(2);
+  const FX = cb.FX, FY = cb.baseY, fw = cb.fw, sw = cb.sw2, wh = cb.bh, rise = cb.rise;
+  const gy = cb.bodyTop, apexX = cb.apexX, apexY = cb.apexY;
+  const slope = -(rise / sw);
+  const sideLit = SUNX > FX + sw / 2, frontLit2 = SUNX < FX;
+
+  // soft violet cast shadow on the snow
+  const dir = SUNX < FX ? 1 : -1;
+  for (let i = 0; i < 70; i++) {
+    const f = rng();
+    dab(g, FX - fw + f * (fw + sw) + dir * (20 + rng() * 70) * s, FY + (4 + rng() * 26) * s - f * rise * 0.8,
+        50 + rng() * 60, 12 + rng() * 10, 0.05 * dir, pick(rng, L.snowShd), 0.16 + rng() * 0.12);
+  }
+  // side wall: per-log parallelograms with rounded-log shading
+  for (let i = 0; i < 7; i++) {
+    const f0 = i / 7, f1 = (i + 1) / 7;
+    const yA0 = FY - wh * f0, yA1 = FY - wh * f1;
+    const lg = g.createLinearGradient(0, yA1, 0, yA0);
+    const base = sideLit ? [126, 94, 60] : [66, 48, 30];
+    lg.addColorStop(0, rgb(mixC(base, [30, 20, 11], 0.45)));
+    lg.addColorStop(0.4, rgb(base));
+    lg.addColorStop(1, rgb(mixC(base, [20, 13, 7], 0.55)));
+    g.fillStyle = lg;
+    g.beginPath();
+    g.moveTo(FX, yA0); g.lineTo(FX + sw, yA0 - rise);
+    g.lineTo(FX + sw, yA1 - rise + 1); g.lineTo(FX, yA1 + 1);
+    g.closePath(); g.fill();
+    g.fillStyle = 'rgba(15,9,4,0.55)';
+    g.beginPath();
+    g.moveTo(FX, yA1); g.lineTo(FX + sw, yA1 - rise);
+    g.lineTo(FX + sw, yA1 - rise + 1.8 * s); g.lineTo(FX, yA1 + 1.8 * s);
+    g.closePath(); g.fill();
+  }
+  for (let i = 0; i < 120; i++) {
+    const t = rng(), f = rng();
+    dab(g, FX + sw * t, FY - wh * f - rise * t + rng() * 2, 14 + rng() * 22, 3 + rng() * 3,
+        slope, mixC([30, 20, 11], [150, 116, 76], rng()), 0.08 + rng() * 0.08);
+  }
+  // front gable wall: horizontal logs
+  for (let i = 0; i < 7; i++) {
+    const f0 = i / 7, f1 = (i + 1) / 7;
+    const base = frontLit2 ? [138, 104, 66] : [74, 54, 34];
+    const lg = g.createLinearGradient(0, FY - wh * f1, 0, FY - wh * f0);
+    lg.addColorStop(0, rgb(mixC(base, [32, 22, 12], 0.4)));
+    lg.addColorStop(0.4, rgb(base));
+    lg.addColorStop(1, rgb(mixC(base, [22, 14, 8], 0.5)));
+    g.fillStyle = lg;
+    g.fillRect(FX - fw, FY - wh * f1, fw, wh * (f1 - f0));
+    g.fillStyle = 'rgba(15,9,4,0.5)';
+    g.fillRect(FX - fw, FY - wh * f1, fw, 1.8 * s);
+  }
+  for (let i = 0; i < 70; i++) {
+    dab(g, FX - fw + fw * rng(), FY - wh * rng(), 12 + rng() * 18, 3 + rng() * 3, 0,
+        mixC([32, 22, 12], [160, 124, 82], rng()), 0.08 + rng() * 0.08);
+  }
+  // door on the front wall, right of the windows
   g.fillStyle = '#3a2917';
-  g.fillRect(cb.cx - 15 * s, y0 + cb.bh - 52 * s, 30 * s, 52 * s);
+  g.fillRect(FX - fw * 0.13 - 14 * s, FY - 52 * s, 28 * s, 52 * s);
   g.strokeStyle = 'rgba(255,200,140,0.15)';
   g.lineWidth = 1.5 * s;
-  g.strokeRect(cb.cx - 12 * s, y0 + cb.bh - 49 * s, 24 * s, 49 * s);
-
-  const eaveLx = x0 - cb.eave, eaveRx = x0 + cb.bw + cb.eave, eaveY = y0 + 4 * s;
-  g.fillStyle = '#59412a';
+  g.strokeRect(FX - fw * 0.13 - 11 * s, FY - 49 * s, 22 * s, 49 * s);
+  // gable triangle
+  const gTri = frontLit2 ? [128, 96, 62] : [64, 47, 30];
+  g.fillStyle = rgb(gTri);
   g.beginPath();
-  g.moveTo(x0, y0 + 1); g.lineTo(cb.cx, cb.roofTop + 8 * s); g.lineTo(x0 + cb.bw, y0 + 1);
+  g.moveTo(FX - fw - 1, gy + 1); g.lineTo(apexX, apexY); g.lineTo(FX + 1, gy + 1);
   g.closePath(); g.fill();
-  g.fillStyle = 'rgba(30,16,6,0.18)';
-  g.beginPath();
-  g.moveTo(cb.cx, cb.roofTop + 8 * s); g.lineTo(x0 + cb.bw, y0 + 1); g.lineTo(cb.cx, y0 + 1);
-  g.closePath(); g.fill();
-
-  const chX = cb.chimX, chW = cb.chimW;
-  g.fillStyle = '#7e7f88';
-  g.fillRect(chX - chW / 2, cb.chimTop, chW, (cb.bodyTop - cb.chimTop) * 0.8);
-  const srng = mulberry32(777);
-  for (let y = cb.chimTop + 3 * s; y < cb.bodyTop - 30 * s; y += 8 * s) {
-    for (let x = chX - chW / 2 + 2 * s; x < chX + chW / 2 - 5 * s; x += 9 * s) {
-      g.fillStyle = `rgba(${40 + srng() * 40 | 0},${40 + srng() * 40 | 0},${48 + srng() * 40 | 0},0.55)`;
-      g.beginPath();
-      g.roundRect ? g.roundRect(x + srng() * 2, y, 7 * s, 5.5 * s, 2) : g.rect(x, y, 7 * s, 5.5 * s);
-      g.fill();
-    }
+  for (let i = 1; i < 5; i++) {
+    g.fillStyle = 'rgba(15,9,4,0.4)';
+    const yy = gy - i * (gy - apexY) / 5;
+    const half = (fw / 2) * (1 - i / 5);
+    g.fillRect(apexX - half, yy, half * 2, 1.6 * s);
   }
-  g.fillStyle = '#6c6d76';
-  g.fillRect(chX - chW / 2 - 3 * s, cb.chimTop - 4 * s, chW + 6 * s, 6 * s);
-
-  const rt = { x: cb.cx, y: cb.roofTop };
-  g.fillStyle = '#33241a';
+  // crossed log ends at the corner
+  for (let i = 0; i <= 7; i++) {
+    const y = FY - wh * (i / 7) - 3 * s;
+    const eg = g.createRadialGradient(FX + 1 * s - 1.5 * s, y - 1.5 * s, 0.5 * s, FX + 1 * s, y, 4.6 * s);
+    eg.addColorStop(0, '#c9a678');
+    eg.addColorStop(0.7, '#8a6844');
+    eg.addColorStop(1, '#4a3520');
+    g.fillStyle = eg;
+    g.beginPath(); g.arc(FX + 1 * s, y, 4.6 * s, 0, 7); g.fill();
+  }
+  // ambient occlusion under the eaves
+  const ao = g.createLinearGradient(0, gy - 4 * s, 0, gy + 26 * s);
+  ao.addColorStop(0, 'rgba(10,7,4,0.5)');
+  ao.addColorStop(1, 'rgba(10,7,4,0)');
+  g.fillStyle = ao;
+  g.fillRect(FX - fw, gy - 4 * s, fw + sw, 30 * s);
+  // roof plane, dark wood, receding
+  g.fillStyle = '#241a10';
   g.beginPath();
-  g.moveTo(eaveLx, eaveY); g.lineTo(rt.x, rt.y);
-  g.lineTo(rt.x, rt.y + 9 * s); g.lineTo(eaveLx, eaveY + 9 * s);
+  g.moveTo(apexX - fw * 0.56, gy + 2 * s);
+  g.lineTo(apexX, apexY);
+  g.lineTo(apexX + sw, apexY - rise * 0.95);
+  g.lineTo(apexX + sw + fw * 0.34, gy - rise * 0.95 + 2 * s);
+  g.lineTo(apexX + fw * 0.52, gy + 2 * s);
   g.closePath(); g.fill();
+  /* snow blanket: crisp silhouette, softly dab-shaded interior; thickness follows roofAccum */
+  const acc = 0.35 + 0.65 * roofAccum;
+  const lift = 10 * s * acc;
+  const roofSnowCols = frontLit2 ? L.snowLit : L.snowMid;
   g.beginPath();
-  g.moveTo(eaveRx, eaveY); g.lineTo(rt.x, rt.y);
-  g.lineTo(rt.x, rt.y + 9 * s); g.lineTo(eaveRx, eaveY + 9 * s);
-  g.closePath(); g.fill();
-
-  const th = (9 + 24 * roofAccum) * s;
+  g.moveTo(apexX - fw * 0.62, gy + 3 * s);
+  g.quadraticCurveTo(apexX - fw * 0.30, apexY + 4 * s, apexX, apexY - lift);
+  g.lineTo(apexX + sw, apexY - rise * 0.95 - lift);
+  g.quadraticCurveTo(apexX + sw + fw * 0.22, gy - rise * 0.95 - lift, apexX + sw + fw * 0.38, gy - rise * 0.95 + 1 * s);
+  g.quadraticCurveTo(apexX + sw + fw * 0.42, gy - rise * 0.95 + 8 * s, apexX + sw + fw * 0.32, gy - rise * 0.95 + 9 * s);
+  g.lineTo(apexX + fw * 0.55, gy + 11 * s);
+  g.quadraticCurveTo(apexX - fw * 0.50, gy + 13 * s, apexX - fw * 0.65, gy + 9 * s);
+  g.closePath();
   g.save();
-  g.shadowColor = 'rgba(255,255,255,0.5)';
-  g.shadowBlur = 3;
-  g.beginPath();
-  g.moveTo(eaveLx - 4 * s, eaveY + 8 * s);
-  g.quadraticCurveTo(eaveLx - 8 * s, eaveY - th * 0.35, eaveLx + 2 * s, eaveY - th * 0.55);
-  g.lineTo(rt.x - 8 * s, rt.y - th * 0.8);
-  g.quadraticCurveTo(rt.x, rt.y - th * 1.35, rt.x + 8 * s, rt.y - th * 0.8);
-  g.lineTo(eaveRx - 2 * s, eaveY - th * 0.55);
-  g.quadraticCurveTo(eaveRx + 8 * s, eaveY - th * 0.35, eaveRx + 4 * s, eaveY + 8 * s);
-  g.quadraticCurveTo(eaveRx - 6 * s, eaveY + 2 * s, eaveRx - 14 * s, eaveY + 1 * s);
-  g.lineTo(rt.x, rt.y + 6 * s);
-  g.lineTo(eaveLx + 14 * s, eaveY + 1 * s);
-  g.quadraticCurveTo(eaveLx + 6 * s, eaveY + 2 * s, eaveLx - 4 * s, eaveY + 8 * s);
-  g.closePath();
-  g.fillStyle = '#f5f9ff';
-  g.fill();
+  g.clip();
+  g.fillStyle = rgb(L.snowMid[0]);
+  g.fillRect(apexX - fw, apexY - 30 * s, sw + fw * 2, wh + 80 * s);
+  const nDab = (isMobile ? 260 : 500);
+  for (let i = 0; i < nDab; i++) {
+    const t = rng(), u2 = rng();
+    const x = lerp(apexX - fw * 0.62, apexX + sw + fw * 0.38, t);
+    const y = lerp(apexY - lift * 0.8, apexY - rise * 0.93 - lift * 0.8, clamp((t - 0.08) / 0.84, 0, 1)) + u2 * (wh * 0.30 + 18 * s);
+    let col = u2 < 0.3 ? mixC(pick(rng, L.snowLit), L.sunGlow, frontLit2 ? 0.3 : 0.12)
+            : u2 > 0.72 ? pick(rng, L.snowShd) : pick(rng, roofSnowCols);
+    dab(g, x, y, 13 + rng() * 16, 7 + rng() * 7, slope + (rng() - 0.5) * 0.06, col, 0.30 + rng() * 0.22);
+  }
   g.restore();
+  // sun-bright crest along the snow ridge
+  for (let i = 0; i < 90; i++) {
+    const t = rng();
+    dab(g, lerp(apexX, apexX + sw, t), lerp(apexY - lift, apexY - rise * 0.95 - lift, t) + rng() * 3 * s,
+        10 + rng() * 12, 3.5 + rng() * 3, slope, mixC(pick(rng, L.snowLit), L.sunCore, 0.35), 0.35 + rng() * 0.25);
+  }
+  // chimney: crisp stone stack with a snow cap
+  const chX2 = apexX + sw * 0.45, chY2 = apexY - rise * 0.42;
+  g.fillStyle = '#63626c';
+  g.fillRect(chX2, chY2 - 38 * s, 17 * s, 42 * s);
+  const chg = g.createLinearGradient(chX2, 0, chX2 + 17 * s, 0);
+  chg.addColorStop(0, 'rgba(255,255,255,0.16)');
+  chg.addColorStop(1, 'rgba(0,0,0,0.35)');
+  g.fillStyle = chg;
+  g.fillRect(chX2, chY2 - 38 * s, 17 * s, 42 * s);
+  for (let yy = 0; yy < 5; yy++)
+    for (let xx = 0; xx < 2; xx++) {
+      g.fillStyle = `rgba(${52 + rng() * 36 | 0},${52 + rng() * 34 | 0},${58 + rng() * 34 | 0},0.8)`;
+      g.fillRect(chX2 + 1.5 * s + xx * 8 * s + (yy % 2) * 2 * s, chY2 - 36 * s + yy * 8 * s, 6.5 * s, 6 * s);
+    }
+  g.fillStyle = rgb(L.snowMid[0]);
   g.beginPath();
-  g.moveTo(rt.x, rt.y - th * 1.1);
-  g.lineTo(eaveRx + 2 * s, eaveY - th * 0.4);
-  g.lineTo(eaveRx - 12 * s, eaveY);
-  g.lineTo(rt.x, rt.y + 4 * s);
-  g.closePath();
-  g.fillStyle = 'rgba(165,190,235,0.28)';
-  g.fill();
-  g.beginPath();
-  g.ellipse(chX, cb.chimTop - 5 * s, (chW / 2 + 4 * s), (3 + 5 * roofAccum) * s, 0, 0, Math.PI * 2);
-  g.fillStyle = '#f5f9ff';
+  g.ellipse(chX2 + 8.5 * s, chY2 - 39 * s, 12 * s, (2 + 2.5 * roofAccum) * s, 0, 0, Math.PI * 2);
   g.fill();
 
+  // window frames + snowy sills (the warm glass is drawn live by windowGlow)
   for (const wn of cb.windows) {
     g.fillStyle = '#2a1c10';
     g.fillRect(wn.x - 3 * s, wn.y - 3 * s, wn.w + 6 * s, wn.h + 6 * s);
@@ -1377,8 +1353,9 @@ function roofAvalanche() {
     const side = i % 2 ? 1 : -1;
     particles.push({
       type: 'clump',
-      x: cb.cx + side * (cb.bw / 2 + cb.eave) * (0.55 + Math.random() * 0.45),
-      y: cb.bodyTop + 2 * s,
+      x: side < 0 ? cb.apexX - cb.fw * (0.25 + Math.random() * 0.35)
+                  : cb.apexX + cb.sw2 * (0.55 + Math.random() * 0.45),
+      y: cb.bodyTop + 2 * s - (side > 0 ? cb.rise * 0.6 : 0),
       vx: side * (15 + Math.random() * 30) + wind * 40,
       vy: 10 + Math.random() * 30,
       r: (6 + Math.random() * 8) * (0.5 + dropped),
