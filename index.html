@@ -17,7 +17,7 @@
 
   /* Glass control panel — desktop: compact, top-right, closable */
   .glass-panel {
-    position: fixed; right: 20px; top: 20px; bottom: auto; left: auto; width: 150px; z-index: 20;
+    position: fixed; right: 20px; top: 20px; bottom: auto; left: auto; width: 210px; box-sizing: border-box; z-index: 20;
     background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
     border: 1px solid rgba(255,255,255,.14);
     border-radius: 14px;
@@ -28,8 +28,8 @@
     color: #eef3fb;
     user-select: none;
   }
-  .glass-panel h1 { margin: 0 0 7px; font-size: 11px; font-weight: 600; letter-spacing: .03em; padding-right: 18px; }
-  .glass-panel h1 span { opacity: .55; font-weight: 400; font-size: 8.5px; margin-left: 4px; }
+  .glass-panel h1 { margin: 0 0 7px; font-size: 13px; font-weight: 600; letter-spacing: .03em; padding-right: 18px; }
+  .glass-panel h1 span { opacity: .55; font-weight: 400; font-size: 10px; margin-left: 4px; }
   .glass-panel.closed { display: none; }
 
   /* close ✕ in the panel's top-right corner */
@@ -37,7 +37,7 @@
     position: absolute; top: 7px; right: 7px; width: 18px; height: 18px;
     border-radius: 6px; border: 1px solid rgba(255,255,255,.16);
     background: rgba(255,255,255,.08); color: #eef3fb; cursor: pointer;
-    font: 600 10px/16px inherit; font-family: inherit; padding: 0;
+    font-family: inherit; font-weight: 600; font-size: 10px; line-height: 16px; padding: 0;
     transition: background .2s;
   }
   #closeBtn:hover { background: rgba(255,255,255,.18); }
@@ -60,23 +60,29 @@
   .series-table { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
   .ctl { margin-bottom: 8px; }
   .ctl label { display: flex; justify-content: space-between; align-items: center; gap: 4px;
-               font-size: 9px; opacity: .85; margin-bottom: 3px; letter-spacing: .02em; }
+               font-size: 11.5px; opacity: .85; margin-bottom: 3px; letter-spacing: .02em; }
   .ctl input[type="range"] { width: 100%; accent-color: #ffb45c; height: 14px; margin: 0; cursor: pointer; }
   .seg { display: flex; gap: 3px; }
   .seg.stack { margin-top: 4px; }
   .seg button, .series-table button {
-    flex: 1; min-width: 0; font-size: 8px; padding: 4px 1px; border-radius: 7px; cursor: pointer;
+    flex: 1; min-width: 0; font-size: 10.5px; padding: 6px 3px; border-radius: 7px; cursor: pointer;
+    line-height: 1.15; min-height: 28px; hyphens: auto; overflow-wrap: anywhere;
     color: #eef3fb; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
     transition: background .2s, border-color .2s;
     font-family: inherit;
   }
   .seg button:hover, .series-table button:hover { background: rgba(255,255,255,.16); }
   .seg button.on, .series-table button.on { background: rgba(255,180,92,.30); border-color: rgba(255,180,92,.55); }
-  .toggle { display: flex; align-items: center; gap: 4px; font-size: 8.5px; cursor: pointer; opacity: .9; }
+  .toggle { display: flex; align-items: center; gap: 4px; font-size: 10.5px; cursor: pointer; opacity: .9; }
   .toggle input { accent-color: #ffb45c; margin: 0; cursor: pointer; width: 11px; height: 11px; }
-  #phaseLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .hint { font-size: 8px; opacity: .55; margin: 7px 0 0; line-height: 1.4; }
+  #phaseLabel { min-width: 0; overflow-wrap: anywhere; hyphens: auto; text-align: right; line-height: 1.15; }
+  .hint { font-size: 10px; opacity: .75; margin: 7px 0 0; line-height: 1.4; }
   #handle { display: none; }
+
+  /* keyboard focus ring (mouse clicks keep their look) */
+  button:focus-visible, input[type="range"]:focus-visible, input[type="checkbox"]:focus-visible {
+    outline: 2px solid #ffb45c; outline-offset: 2px;
+  }
 
   /* Language picker — a real 4-cell table with shared grid lines */
   .lang-table {
@@ -84,7 +90,7 @@
     border: 1px solid rgba(255,255,255,.16); border-radius: 7px; overflow: hidden;
   }
   .lang-table button {
-    font-size: 8.5px; font-weight: 600; letter-spacing: .05em; padding: 5px 0;
+    font-size: 10.5px; font-weight: 600; letter-spacing: .05em; padding: 5px 0;
     color: #eef3fb; background: rgba(255,255,255,.06); border: 0;
     border-left: 1px solid rgba(255,255,255,.16);
     cursor: pointer; font-family: inherit; transition: background .2s;
@@ -102,19 +108,21 @@
       backdrop-filter: blur(11px);
       -webkit-backdrop-filter: blur(11px);
       box-shadow: 0 -12px 32px -14px rgba(0,0,0,.7);
-      padding: 0 5px 10px;
-      transform: translateY(calc(100% - 42px));
+      padding: 0 5px calc(10px + env(safe-area-inset-bottom, 0px));
+      /* closed: keep the 42px handle peek visible above the inset */
+      transform: translateY(calc(100% - 42px - env(safe-area-inset-bottom, 0px)));
       transition: transform .35s cubic-bezier(.4, 0, .2, 1);
       max-height: 72vh;
     }
+    @supports (height: 1dvh) { .glass-panel { max-height: 72dvh; } }
     .glass-panel.open { transform: none; overflow-y: auto; }
     /* the drawer has its own handle — the desktop open/close pair is hidden */
     .glass-panel.closed { display: block; }
     #closeBtn, #openBtn { display: none !important; }
     #handle {
       display: block; width: 100%; background: none; border: none; color: #eef3fb;
-      font: 600 13px/42px inherit; letter-spacing: .04em; cursor: pointer; padding: 0;
-      font-family: inherit;
+      font-family: inherit; font-weight: 600; font-size: 13px; line-height: 42px; height: 42px;
+      letter-spacing: .04em; cursor: pointer; padding: 0;
     }
     #handle::after { content: " ▴"; opacity: .6; }
     .glass-panel.open #handle::after { content: " ▾"; }
@@ -122,15 +130,15 @@
     /* full-size, thumb-friendly controls on touch screens */
     .ctl { margin-bottom: 10px; }
     .ctl label { font-size: 11.5px; margin-bottom: 4px; }
-    .ctl input[type="range"] { height: 20px; }
+    .ctl input[type="range"] { height: 40px; }
     .seg { gap: 4px; }
     .series-table { gap: 4px; }
-    .seg button, .series-table button { font-size: 10.5px; padding: 7px 2px; border-radius: 9px; }
+    .seg button, .series-table button { font-size: 10.5px; padding: 7px 2px; border-radius: 9px; min-height: 40px; }
     .toggle { font-size: 11px; gap: 5px; }
     .toggle input { width: 14px; height: 14px; }
     .hint { font-size: 10px; margin: 8px 0 0; }
     .lang-table { border-radius: 9px; }
-    .lang-table button { font-size: 11.5px; padding: 9px 0; letter-spacing: .06em; }
+    .lang-table button { font-size: 11.5px; padding: 9px 0; letter-spacing: .06em; min-height: 40px; }
   }
 </style>
 </head>
