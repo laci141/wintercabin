@@ -730,6 +730,7 @@ setSeg.addEventListener('click', e => {
 speedRange.addEventListener('input', () => {
   cycleSpeed = parseFloat(speedRange.value);
   speedLabel.textContent = cycleSpeed.toFixed(1) + '×';
+  needsRender = true;
 });
 closeBtn.addEventListener('click', () => {
   panel.classList.add('closed');
