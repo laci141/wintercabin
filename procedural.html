@@ -193,8 +193,9 @@ function getBrushTinted(si, col) {
   return b;
 }
 
-function dab(g, x, y, w, h, rot, col, al) {
-  const b = getBrushTinted((dabRng()*3)|0, col);
+function dab(g, x, y, w, h, rot, col, al, rng) {
+  const r = rng || dabRng;
+  const b = getBrushTinted((r()*3)|0, col);
   g.save();
   g.translate(x, y);
   g.rotate(rot);
