@@ -762,6 +762,7 @@ windSeg.addEventListener('click', e => {
   if (!btn) return;
   windMode = btn.dataset.w;
   for (const x of windSeg.querySelectorAll('button')) x.classList.toggle('on', x === btn);
+  needsRender = true;
 });
 soundOn.addEventListener('change', () => {
   audio.on = soundOn.checked;
