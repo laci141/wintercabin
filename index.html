@@ -345,7 +345,8 @@ function nightAmount(u) {
 
 /* ============================== snowflakes (flat typed arrays) ============================== */
 
-const MAXF = 820;
+// up to 4x baseline count (original + 300% more) at maximum slider value
+const MAXF = 3200;
 const fx = new Float32Array(MAXF), fy = new Float32Array(MAXF), fs = new Float32Array(MAXF),
       fv = new Float32Array(MAXF), fp = new Float32Array(MAXF), fa = new Float32Array(MAXF),
       fo = new Float32Array(MAXF);
@@ -372,7 +373,9 @@ function spawnFlake(i, anywhere) {
 }
 function targetFlakeCount() {
   if (reduceMotion) return 0;
-  const n = Math.round(140 + intensity * 560);
+  // allow up to +300% more flakes (4x at intensity = 1)
+  const boostMult = 1 + intensity * 3;
+  const n = Math.round((140 + intensity * 560) * boostMult);
   return Math.min(MAXF, Math.round(n * (isMobile ? 0.45 : 1)));
 }
 function setActiveFlakes(n) {
@@ -566,14 +569,15 @@ function drawCover(im, alpha) {
 }
 
 function drawFlakes(night) {
-  /* over the dark evening photo the smaller flakes glow a touch brighter */
+  /* match index (32) flake size and evening glow boost on smaller flakes */
   const boost = 1 + night * 0.25;
   ctx.fillStyle = '#ffffff';
   for (let i = 0; i < activeFlakes; i++) {
     const L = fl[i];
     if (L === 2 && softSprite) {
-      const d = fs[i] * 3.2;
-      ctx.globalAlpha = Math.min(1, fo[i] * (1 + night * 0.12));
+      // softSprite reaches 0 alpha at radius 0.5*d; 2.3*fs gives a visible core matching radius fs[i]
+      const d = fs[i] * 2.3;
+      ctx.globalAlpha = Math.min(1, fo[i] * (1 + night * 0.15));
       ctx.drawImage(softSprite, fx[i] - d / 2, fy[i] - d / 2, d, d);
     } else {
       ctx.globalAlpha = Math.min(1, fo[i] * boost);
