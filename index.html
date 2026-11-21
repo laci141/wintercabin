@@ -227,6 +227,19 @@
 const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
 const lerp = (a, b, f) => a + (b - a) * f;
 const smooth = f => f * f * (3 - 2 * f);
+// triple smoothstep for ~250% softer, nearly imperceptible transitions across phases
+const ultraSmooth = f => {
+  let t = clamp(f, 0, 1);
+  t = smooth(t);
+  t = smooth(t);
+  return smooth(t);
+};
+// smooth bell curve centered at centerU (with wraparound on [0, 1))
+function circularBell(u, centerU, halfWidth) {
+  let d = Math.abs(((u - centerU + 0.5) % 1 + 1) % 1 - 0.5);
+  if (d >= halfWidth) return 0;
+  return ultraSmooth(1 - d / halfWidth);
+}
 
 /* ============================== i18n ============================== */
 
@@ -312,7 +325,7 @@ let W = 0, H = 0, dpr = 1, isMobile = false;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let simT = 0;
-let cycleT = 0;                     // 0 sunrise -> 0.25 noon -> 0.5 afternoon -> 0.75 evening
+let cycleT = 0;                     // 0 sunrise -> 0.25 noon -> 0.5 afternoon -> 0.75 evening -> 1.0 sunrise
 let autoCycle = true;
 const CYCLE_SECONDS = 90;
 let cycleSpeed = 1;                 // 0.2x ... 4x — time-of-day cycle rate
@@ -325,13 +338,14 @@ let wind = 0, gustEnv = 0, gustDir = 1, gustAmp = 1;
 let gustState = 'idle', gustClock = 0, nextGust = 6;
 const WIND_CFG = { calm: { base: 0.02, gust: 0.30 }, breezy: { base: 0.14, gust: 0.62 }, stormy: { base: 0.40, gust: 1.05 } };
 
-/* crossfade weights: hold each photo, blend through the last quarter of its phase */
+/* wide, ultra-smooth crossfade across sunrise -> noon -> afternoon -> evening -> sunrise */
 function photoBlend(u) {
   u = ((u % 1) + 1) % 1;
   const p = u * 4;
   const i = Math.floor(p) % 4, j = (i + 1) % 4;
   const f = p - Math.floor(p);
-  const fade = f < 0.72 ? 0 : smooth((f - 0.72) / 0.28);
+  // start blending at 0.25 across 0.75 of each phase (~250% wider blend band) + triple smoothstep
+  const fade = f < 0.25 ? 0 : ultraSmooth((f - 0.25) / 0.75);
   return { i, j, fade };
 }
 /* how "night" the view is — the este photo's weight drives flake glow and the ambience */
@@ -342,31 +356,20 @@ function nightAmount(u) {
   if (b.j === 3) n += b.fade;
   return n;
 }
-/* stepped 25% -> 50% -> 75% -> 100% curve for a 0..1 progress value */
-function step25(p) {
-  const t = clamp(p, 0, 1);
-  if (t <= 0) return 0;
-  if (t < 0.25) return lerp(0.00, 0.25, t / 0.25);
-  if (t < 0.50) return lerp(0.25, 0.50, (t - 0.25) / 0.25);
-  if (t < 0.75) return lerp(0.50, 0.75, (t - 0.50) / 0.25);
-  return lerp(0.75, 1.00, (t - 0.75) / 0.25);
-}
-/* lighting adjustment across the full day cycle (u in [0, 1)):
-   - morning brightening (0.00 -> 0.25): 25% -> 50% -> 75% -> 100% light lift
-   - morning-to-noon & noon-to-afternoon (0.25 -> 0.50): settles cleanly to neutral
-   - afternoon-to-evening (0.50 -> 1.00): 25% -> 50% -> 75% -> 100% progressive darkening */
+/* continuous, ultra-smooth lighting curve around the full 0..1 day cycle:
+   - morning lift peaks gently as day opens and eases smoothly toward noon
+   - evening darkening ramps smoothly through afternoon into evening (u ~ 0.75) and eases smoothly into sunrise */
 function cycleLightAdjustment(u) {
   u = ((u % 1) + 1) % 1;
-  if (u < 0.25) {
-    const p = step25(u / 0.25);
-    return { brighten: p, darken: 0 };
-  }
-  if (u < 0.50) {
-    const p = step25((u - 0.25) / 0.25);
-    return { brighten: 1 - p, darken: 0 };
-  }
-  const p = step25((u - 0.50) / 0.50);
-  return { brighten: 0, darken: p };
+  const morningLift = circularBell(u, 0.12, 0.24);
+  // evening bell centered around 0.78 (evening photo) with wide half-width for soft entry and exit
+  const eveningBell = circularBell(u, 0.78, 0.34);
+  const deepNightCore = circularBell(u, 0.75, 0.16);
+  return {
+    brighten: morningLift,
+    darken: eveningBell,
+    deepNight: deepNightCore
+  };
 }
 
 /* ============================== snowflakes (flat typed arrays) ============================== */
@@ -595,15 +598,15 @@ function drawCover(im, alpha) {
 }
 
 function drawFlakes(night) {
-  /* match index (32) flake size and evening glow boost on smaller flakes */
-  const boost = 1 + night * 0.25;
+  /* balanced evening glow boost so flakes stay crisp in deep night without over-glowing */
+  const boost = 1 + night * 0.32;
   ctx.fillStyle = '#ffffff';
   for (let i = 0; i < activeFlakes; i++) {
     const L = fl[i];
     if (L === 2 && softSprite) {
       // softSprite reaches 0 alpha at radius 0.5*d; 2.3*fs gives a visible core matching radius fs[i]
       const d = fs[i] * 2.3;
-      ctx.globalAlpha = Math.min(1, fo[i] * (1 + night * 0.15));
+      ctx.globalAlpha = Math.min(1, fo[i] * (1 + night * 0.22));
       ctx.drawImage(softSprite, fx[i] - d / 2, fy[i] - d / 2, d, d);
     } else {
       ctx.globalAlpha = Math.min(1, fo[i] * boost);
@@ -628,24 +631,31 @@ function draw() {
   const night = nightAmount(cycleT);
   const adj = cycleLightAdjustment(cycleT);
 
-  /* stepped 25% -> 50% -> 75% -> 100% morning brightening pass */
+  /* smooth morning lift */
   if (adj.brighten > 0.001) {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    ctx.fillStyle = `rgba(255, 236, 205, ${0.22 * adj.brighten})`;
+    ctx.fillStyle = `rgba(255, 236, 205, ${0.18 * adj.brighten})`;
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
 
-  /* stepped 25% -> 50% -> 75% -> 100% afternoon-to-evening darkening pass */
+  /* +300% deeper evening darkening (4x base depth) + deep blue-night veil around evening */
   if (adj.darken > 0.001) {
-    ctx.fillStyle = `rgba(6, 10, 24, ${0.58 * adj.darken})`;
+    ctx.fillStyle = `rgba(4, 8, 22, ${Math.min(0.96, 0.84 * adj.darken)})`;
     ctx.fillRect(0, 0, W, H);
   }
+  if (adj.deepNight > 0.001) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `rgba(38, 54, 96, ${0.72 * adj.deepNight})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
 
-  /* blowing-snow veil during gusts */
+  /* blowing-snow veil during gusts — kept subtle in evening so flakes stand out */
   if (gustEnv > 0.08 && softSprite) {
-    const va = gustEnv * (0.10 + intensity * 0.12) * (1 - 0.35 * adj.darken);
+    const va = gustEnv * (0.10 + intensity * 0.12) * (1 - 0.65 * adj.darken);
     for (let k = 0; k < 4; k++) {
       const vy = H * (0.72 + k * 0.06);
       const speed = (170 + k * 90) * gustDir;
