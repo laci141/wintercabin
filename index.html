@@ -456,7 +456,10 @@ function makeNoiseBuffer(seconds) {
   return buf;
 }
 function initAudio() {
-  if (AC) { AC.resume(); return; }
+  if (AC) {
+    if (AC.state === 'suspended') AC.resume().then(updateAudio).catch(() => {});
+    return;
+  }
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) return;
   AC = new Ctx();
@@ -563,26 +566,22 @@ function drawCover(im, alpha) {
 }
 
 function drawFlakes(night) {
-  /* over the dark evening photo the small flakes glow a touch brighter */
+  /* over the dark evening photo the smaller flakes glow a touch brighter */
   const boost = 1 + night * 0.25;
   ctx.fillStyle = '#ffffff';
   for (let i = 0; i < activeFlakes; i++) {
     const L = fl[i];
-    if (L === 2) {
-      const r = fs[i];
-      const gr = ctx.createRadialGradient(fx[i], fy[i], 0, fx[i], fy[i], r);
-      gr.addColorStop(0, `rgba(255,255,255,${fo[i]})`);
-      gr.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = gr;
-      ctx.beginPath();
-      ctx.arc(fx[i], fy[i], r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
+    if (L === 2 && softSprite) {
+      const d = fs[i] * 3.2;
+      ctx.globalAlpha = Math.min(1, fo[i] * (1 + night * 0.12));
+      ctx.drawImage(softSprite, fx[i] - d / 2, fy[i] - d / 2, d, d);
     } else {
       ctx.globalAlpha = Math.min(1, fo[i] * boost);
       ctx.fillRect(fx[i], fy[i], fs[i], fs[i]);
     }
   }
+  ctx.globalAlpha = 1;
+}
   ctx.globalAlpha = 1;
 }
 
@@ -734,6 +733,7 @@ setSeg.addEventListener('click', e => {
 speedRange.addEventListener('input', () => {
   cycleSpeed = parseFloat(speedRange.value);
   speedLabel.textContent = cycleSpeed.toFixed(1) + '×';
+  needsRender = true;
 });
 closeBtn.addEventListener('click', () => {
   panel.classList.add('closed');
@@ -765,6 +765,7 @@ windSeg.addEventListener('click', e => {
   if (!btn) return;
   windMode = btn.dataset.w;
   for (const x of windSeg.querySelectorAll('button')) x.classList.toggle('on', x === btn);
+  needsRender = true;
 });
 soundOn.addEventListener('change', () => {
   audio.on = soundOn.checked;
