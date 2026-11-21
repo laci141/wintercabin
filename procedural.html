@@ -1095,7 +1095,6 @@ let renderedOnce = false;
 function getPhotoLighting(cyc) {
   // Light model for photographic rendering based on day/night cycle
   // Returns sun position and color palettes
-  const isNight = cyc.night > 0.5;
   const isSunset = cycleT > 0.72 && cycleT < 1.0;
   const isSunrise = cycleT >= 0.0 && cycleT < 0.25;
 
