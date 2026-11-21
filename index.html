@@ -342,6 +342,32 @@ function nightAmount(u) {
   if (b.j === 3) n += b.fade;
   return n;
 }
+/* stepped 25% -> 50% -> 75% -> 100% curve for a 0..1 progress value */
+function step25(p) {
+  const t = clamp(p, 0, 1);
+  if (t <= 0) return 0;
+  if (t < 0.25) return lerp(0.00, 0.25, t / 0.25);
+  if (t < 0.50) return lerp(0.25, 0.50, (t - 0.25) / 0.25);
+  if (t < 0.75) return lerp(0.50, 0.75, (t - 0.50) / 0.25);
+  return lerp(0.75, 1.00, (t - 0.75) / 0.25);
+}
+/* lighting adjustment across the full day cycle (u in [0, 1)):
+   - morning brightening (0.00 -> 0.25): 25% -> 50% -> 75% -> 100% light lift
+   - morning-to-noon & noon-to-afternoon (0.25 -> 0.50): settles cleanly to neutral
+   - afternoon-to-evening (0.50 -> 1.00): 25% -> 50% -> 75% -> 100% progressive darkening */
+function cycleLightAdjustment(u) {
+  u = ((u % 1) + 1) % 1;
+  if (u < 0.25) {
+    const p = step25(u / 0.25);
+    return { brighten: p, darken: 0 };
+  }
+  if (u < 0.50) {
+    const p = step25((u - 0.25) / 0.25);
+    return { brighten: 1 - p, darken: 0 };
+  }
+  const p = step25((u - 0.50) / 0.50);
+  return { brighten: 0, darken: p };
+}
 
 /* ============================== snowflakes (flat typed arrays) ============================== */
 
@@ -600,16 +626,32 @@ function draw() {
   if (b.fade > 0.001) drawCover(set[b.j], b.fade);
 
   const night = nightAmount(cycleT);
+  const adj = cycleLightAdjustment(cycleT);
+
+  /* stepped 25% -> 50% -> 75% -> 100% morning brightening pass */
+  if (adj.brighten > 0.001) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = `rgba(255, 236, 205, ${0.22 * adj.brighten})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  /* stepped 25% -> 50% -> 75% -> 100% afternoon-to-evening darkening pass */
+  if (adj.darken > 0.001) {
+    ctx.fillStyle = `rgba(6, 10, 24, ${0.58 * adj.darken})`;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   /* blowing-snow veil during gusts */
   if (gustEnv > 0.08 && softSprite) {
-    const va = gustEnv * (0.10 + intensity * 0.12);
+    const va = gustEnv * (0.10 + intensity * 0.12) * (1 - 0.35 * adj.darken);
     for (let k = 0; k < 4; k++) {
       const vy = H * (0.72 + k * 0.06);
       const speed = (170 + k * 90) * gustDir;
       let vx = ((simT * speed) % (W + 460)) - 230;
       if (vx < -230) vx += W + 460;
-      ctx.globalAlpha = va * (1 - k * 0.15);
+      ctx.globalAlpha = Math.max(0, va * (1 - k * 0.15));
       ctx.drawImage(softSprite, vx - 210, vy - 16, 420, 32);
       ctx.drawImage(softSprite, vx - 210 - (W + 460) * gustDir, vy - 16, 420, 32);
     }
