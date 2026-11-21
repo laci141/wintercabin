@@ -1990,6 +1990,7 @@ windSeg.addEventListener('click', e => {
   if (!b) return;
   windMode = b.dataset.w;
   for (const btn of windSeg.querySelectorAll('button')) btn.classList.toggle('on', btn === b);
+  needsRender = true;
 });
 soundOn.addEventListener('change', () => {
   audio.on = soundOn.checked;
