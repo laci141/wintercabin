@@ -456,10 +456,7 @@ function makeNoiseBuffer(seconds) {
   return buf;
 }
 function initAudio() {
-  if (AC) {
-    if (AC.state === 'suspended') AC.resume().then(updateAudio).catch(() => {});
-    return;
-  }
+  if (AC) { AC.resume(); return; }
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) return;
   AC = new Ctx();
