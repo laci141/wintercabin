@@ -59,7 +59,7 @@
   /* photo-series picker: 2 x 2 table */
   .series-table { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
   .ctl { margin-bottom: 8px; }
-  .ctl label { display: flex; justify-content: space-between; align-items: center; gap: 4px;
+  .ctl .lbl, .ctl > label { display: flex; justify-content: space-between; align-items: center; gap: 4px;
                font-size: 11.5px; opacity: .85; margin-bottom: 3px; letter-spacing: .02em; }
   .ctl input[type="range"] { width: 100%; accent-color: #ffb45c; height: 14px; margin: 0; cursor: pointer; }
   .seg { display: flex; gap: 3px; }
@@ -73,8 +73,10 @@
   }
   .seg button:hover, .series-table button:hover { background: rgba(255,255,255,.16); }
   .seg button.on, .series-table button.on { background: rgba(255,180,92,.30); border-color: rgba(255,180,92,.55); }
-  .toggle { display: flex; align-items: center; gap: 4px; font-size: 10.5px; cursor: pointer; opacity: .9; }
-  .toggle input { accent-color: #ffb45c; margin: 0; cursor: pointer; width: 11px; height: 11px; }
+  /* toggle is its own <label for>, never nested in another label; padding = hit area */
+  .toggle { display: flex; align-items: center; gap: 4px; font-size: 10.5px; cursor: pointer; opacity: .9;
+            padding: 5px 0 5px 6px; min-height: 24px; box-sizing: border-box; }
+  .toggle input { accent-color: #ffb45c; margin: 0; cursor: pointer; width: 16px; height: 16px; }
   #phaseLabel { min-width: 0; overflow-wrap: anywhere; hyphens: auto; text-align: right; line-height: 1.15; }
   .hint { font-size: 10px; opacity: .75; margin: 7px 0 0; line-height: 1.4; }
   #handle { display: none; }
@@ -129,13 +131,13 @@
     .glass-panel h1 { display: none; }
     /* full-size, thumb-friendly controls on touch screens */
     .ctl { margin-bottom: 10px; }
-    .ctl label { font-size: 11.5px; margin-bottom: 4px; }
+    .ctl .lbl, .ctl > label { font-size: 11.5px; margin-bottom: 4px; }
     .ctl input[type="range"] { height: 40px; }
     .seg { gap: 4px; }
     .series-table { gap: 4px; }
     .seg button, .series-table button { font-size: 10.5px; padding: 7px 2px; border-radius: 9px; min-height: 40px; }
-    .toggle { font-size: 11px; gap: 5px; }
-    .toggle input { width: 14px; height: 14px; }
+    .toggle { font-size: 11px; gap: 5px; padding: 10px 0 10px 12px; min-height: 40px; min-width: 44px; }
+    .toggle input { width: 20px; height: 20px; }
     .hint { font-size: 10px; margin: 8px 0 0; }
     .lang-table { border-radius: 9px; }
     .lang-table button { font-size: 11.5px; padding: 9px 0; letter-spacing: .06em; min-height: 40px; }
@@ -178,11 +180,11 @@
   </div>
 
   <div class="ctl">
-    <label for="timeRange"><span data-t="time">Napszak</span>
+    <div class="lbl"><span id="timeTitle" data-t="time">Napszak</span>
       <span id="phaseLabel" style="opacity:.7">Napkelte</span>
-      <span class="toggle"><input type="checkbox" id="autoTime" checked> <span data-t="auto">Auto</span></span>
-    </label>
-    <input type="range" id="timeRange" min="0" max="1" step="0.001" value="0">
+      <label class="toggle" for="autoTime"><input type="checkbox" id="autoTime" checked> <span data-t="auto">Auto</span></label>
+    </div>
+    <input type="range" id="timeRange" aria-labelledby="timeTitle" min="0" max="1" step="0.001" value="0">
   </div>
 
   <div class="ctl">
@@ -200,10 +202,10 @@
   </div>
 
   <div class="ctl">
-    <label for="volRange"><span data-t="sound">Hang</span>
-      <span class="toggle"><input type="checkbox" id="soundOn"> <span data-t="on">Be</span></span>
-    </label>
-    <input type="range" id="volRange" min="0" max="1" step="0.01" value="0.6">
+    <div class="lbl"><span id="soundTitle" data-t="sound">Hang</span>
+      <label class="toggle" for="soundOn"><input type="checkbox" id="soundOn"> <span data-t="on">Be</span></label>
+    </div>
+    <input type="range" id="volRange" aria-labelledby="soundTitle" min="0" max="1" step="0.01" value="0.6">
     <div class="seg stack" id="audSeg">
       <button data-a="wind" class="on" data-t="audWind">Szél</button>
       <button data-a="fire" class="on" data-t="audFire">Tűz</button>
