@@ -193,9 +193,8 @@ function getBrushTinted(si, col) {
   return b;
 }
 
-function dab(g, x, y, w, h, rot, col, al, rng) {
-  const r = rng || dabRng;
-  const b = getBrushTinted((r()*3)|0, col);
+function dab(g, x, y, w, h, rot, col, al) {
+  const b = getBrushTinted((dabRng()*3)|0, col);
   g.save();
   g.translate(x, y);
   g.rotate(rot);
@@ -1096,6 +1095,7 @@ let renderedOnce = false;
 function getPhotoLighting(cyc) {
   // Light model for photographic rendering based on day/night cycle
   // Returns sun position and color palettes
+  const isNight = cyc.night > 0.5;
   const isSunset = cycleT > 0.72 && cycleT < 1.0;
   const isSunrise = cycleT >= 0.0 && cycleT < 0.25;
 
@@ -1990,7 +1990,6 @@ windSeg.addEventListener('click', e => {
   if (!b) return;
   windMode = b.dataset.w;
   for (const btn of windSeg.querySelectorAll('button')) btn.classList.toggle('on', btn === b);
-  needsRender = true;
 });
 soundOn.addEventListener('change', () => {
   audio.on = soundOn.checked;
