@@ -598,15 +598,15 @@ function drawCover(im, alpha) {
 }
 
 function drawFlakes(night) {
-  /* balanced evening glow boost so flakes stay crisp in deep night without over-glowing */
-  const boost = 1 + night * 0.32;
+  /* balanced evening glow boost so flakes stay crisp in night without over-glowing */
+  const boost = 1 + night * 0.28;
   ctx.fillStyle = '#ffffff';
   for (let i = 0; i < activeFlakes; i++) {
     const L = fl[i];
     if (L === 2 && softSprite) {
       // softSprite reaches 0 alpha at radius 0.5*d; 2.3*fs gives a visible core matching radius fs[i]
       const d = fs[i] * 2.3;
-      ctx.globalAlpha = Math.min(1, fo[i] * (1 + night * 0.22));
+      ctx.globalAlpha = Math.min(1, fo[i] * (1 + night * 0.18));
       ctx.drawImage(softSprite, fx[i] - d / 2, fy[i] - d / 2, d, d);
     } else {
       ctx.globalAlpha = Math.min(1, fo[i] * boost);
@@ -640,22 +640,22 @@ function draw() {
     ctx.restore();
   }
 
-  /* +300% deeper evening darkening (4x base depth) + deep blue-night veil around evening */
+  /* +150% evening darkening (2.5x base depth) + subtle blue-night tint around evening */
   if (adj.darken > 0.001) {
-    ctx.fillStyle = `rgba(4, 8, 22, ${Math.min(0.96, 0.84 * adj.darken)})`;
+    ctx.fillStyle = `rgba(5, 9, 23, ${Math.min(0.75, 0.525 * adj.darken)})`;
     ctx.fillRect(0, 0, W, H);
   }
   if (adj.deepNight > 0.001) {
     ctx.save();
     ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = `rgba(38, 54, 96, ${0.72 * adj.deepNight})`;
+    ctx.fillStyle = `rgba(42, 60, 104, ${0.38 * adj.deepNight})`;
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
 
   /* blowing-snow veil during gusts — kept subtle in evening so flakes stand out */
   if (gustEnv > 0.08 && softSprite) {
-    const va = gustEnv * (0.10 + intensity * 0.12) * (1 - 0.65 * adj.darken);
+    const va = gustEnv * (0.10 + intensity * 0.12) * (1 - 0.50 * adj.darken);
     for (let k = 0; k < 4; k++) {
       const vy = H * (0.72 + k * 0.06);
       const speed = (170 + k * 90) * gustDir;
