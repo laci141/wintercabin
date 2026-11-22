@@ -16,8 +16,8 @@
 
   .glass-panel {
     position: fixed; right: 20px; top: 20px; bottom: auto; left: auto; width: 224px; box-sizing: border-box; z-index: 20;
-    background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
-    border: 1px solid rgba(255,255,255,.14);
+    background: linear-gradient(160deg, rgba(9,15,29,.94), rgba(13,21,38,.88));
+    border: 1px solid rgba(255,255,255,.22);
     border-radius: 14px;
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
@@ -87,7 +87,18 @@
             padding: 5px 0 5px 6px; min-height: 24px; box-sizing: border-box; }
   .toggle input { accent-color: #ffb45c; margin: 0; cursor: pointer; width: 16px; height: 16px; }
   #phaseLabel { min-width: 0; overflow-wrap: anywhere; hyphens: auto; text-align: right; line-height: 1.15; }
-  .hint { font-size: 10px; opacity: .75; margin: 7px 0 0; line-height: 1.4; }
+  .hint { font-size: 10px; opacity: .82; margin: 7px 0 0; line-height: 1.4; }
+  .photo-notice {
+    position: fixed; left: 20px; top: 20px; z-index: 18;
+    max-width: min(460px, calc(100vw - 270px));
+    box-sizing: border-box; padding: 10px 13px;
+    color: #fff4df; background: rgba(88, 35, 20, .88);
+    border: 1px solid rgba(255, 190, 120, .45); border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.3);
+    font-size: 12px; line-height: 1.45;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .photo-notice[hidden] { display: none; }
   #handle { display: none; }
 
   button:focus-visible, input[type="range"]:focus-visible, input[type="checkbox"]:focus-visible {
@@ -109,6 +120,7 @@
   .lang-table button.on { background: rgba(255,180,92,.30); color: #fff; }
 
   @media (max-width: 700px) {
+    .photo-notice { left: 10px; right: 10px; top: 10px; max-width: none; }
     .glass-panel {
       left: 0; right: 0; bottom: 0; top: auto; width: auto;
       border-radius: 18px 18px 0 0;
@@ -151,30 +163,30 @@
 <body>
 <canvas id="scene"></canvas>
 
-<button id="openBtn" aria-label="Vezérlők">⚙</button>
+  <button id="openBtn" type="button" aria-label="Vezérlők">⚙</button>
 
 <div class="glass-panel" id="panel">
-  <button id="handle">Winter Cabin</button>
-  <button id="closeBtn" aria-label="Bezárás">✕</button>
+  <button id="handle" type="button" aria-controls="panel" aria-expanded="false">Winter Cabin</button>
+  <button id="closeBtn" type="button" aria-label="Bezárás">✕</button>
   <h1>Winter Cabin <span data-t="controls">vezérlők</span></h1>
 
   <div class="ctl">
     <label><span data-t="language">Nyelv</span></label>
     <div class="lang-table" id="langSeg">
-      <button data-l="hu" class="on">HU</button>
-      <button data-l="en">EN</button>
-      <button data-l="ro">RO</button>
-      <button data-l="de">DE</button>
+      <button type="button" data-l="hu" class="on">HU</button>
+      <button type="button" data-l="en">EN</button>
+      <button type="button" data-l="ro">RO</button>
+      <button type="button" data-l="de">DE</button>
     </div>
   </div>
 
   <div class="ctl">
     <label><span data-t="series">Fotósorozat</span></label>
     <div class="series-table" id="setSeg">
-      <button data-s="0" class="on" data-t="series1">Völgy</button>
-      <button data-s="1" data-t="series2">Patak</button>
-      <button data-s="2" data-t="series3">Tó</button>
-      <button data-s="3" data-t="series4">Hegy</button>
+      <button type="button" data-s="0" class="on" data-t="series1">Völgy</button>
+      <button type="button" data-s="1" data-t="series2">Patak</button>
+      <button type="button" data-s="2" data-t="series3">Tó</button>
+      <button type="button" data-s="3" data-t="series4">Hegy</button>
     </div>
   </div>
 
@@ -208,9 +220,9 @@
   <div class="ctl">
     <label><span data-t="wind">Szél</span></label>
     <div class="seg" id="windSeg">
-      <button data-w="calm" data-t="windCalm">Szélcsend</button>
-      <button data-w="breezy" class="on" data-t="windBreezy">Szellő</button>
-      <button data-w="stormy" data-t="windStormy">Viharos</button>
+      <button type="button" data-w="calm" data-t="windCalm">Szélcsend</button>
+      <button type="button" data-w="breezy" class="on" data-t="windBreezy">Szellő</button>
+      <button type="button" data-w="stormy" data-t="windStormy">Viharos</button>
     </div>
 
     <div class="lbl" style="margin-top:6px;">
@@ -256,6 +268,7 @@
 </div>
 
 <div id="fade"></div>
+<div class="photo-notice" id="photoNotice" role="status" aria-live="polite" hidden></div>
 
 <script>
 (function () {
@@ -280,7 +293,8 @@ function circularBell(u, centerU, halfWidth) {
 
 const I18N = {
   hu: {
-    _html: 'hu', _handle: 'Vezérlők',
+    _html: 'hu', _handle: 'Vezérlők', _open: 'Vezérlők megnyitása', _close: 'Vezérlők bezárása',
+    photoWarning: 'Nem sikerült betölteni {count} képet. Ellenőrizd az index.html melletti img/ mappát.',
     controls: 'vezérlők', language: 'Nyelv',
     series: 'Fotósorozat',
     series1: 'Völgy', series2: 'Patak', series3: 'Tó', series4: 'Hegy',
@@ -295,7 +309,8 @@ const I18N = {
     hint: 'A napszak csúszka a fotók — napkelte, dél, délután, este, hold — között úszik át.'
   },
   en: {
-    _html: 'en', _handle: 'Controls',
+    _html: 'en', _handle: 'Controls', _open: 'Open controls', _close: 'Close controls',
+    photoWarning: 'Could not load {count} photos. Check the img/ folder next to index.html.',
     controls: 'controls', language: 'Language',
     series: 'Photo series',
     series1: 'Valley', series2: 'Stream', series3: 'Lake', series4: 'Mountain',
@@ -310,7 +325,8 @@ const I18N = {
     hint: 'The time-of-day slider crossfades between the photos — sunrise, noon, afternoon, evening, moon.'
   },
   ro: {
-    _html: 'ro', _handle: 'Comenzi',
+    _html: 'ro', _handle: 'Comenzi', _open: 'Deschide comenzile', _close: 'Închide comenzile',
+    photoWarning: 'Nu s-au putut încărca {count} fotografii. Verifică folderul img/ de lângă index.html.',
     controls: 'comenzi', language: 'Limbă',
     series: 'Serie foto',
     series1: 'Vale', series2: 'Pârâu', series3: 'Lac', series4: 'Munte',
@@ -325,7 +341,8 @@ const I18N = {
     hint: 'Cursorul pentru momentul zilei trece lin între fotografii — răsărit, amiază, după-amiază, seară, lună.'
   },
   de: {
-    _html: 'de', _handle: 'Regler',
+    _html: 'de', _handle: 'Regler', _open: 'Regler öffnen', _close: 'Regler schließen',
+    photoWarning: '{count} Fotos konnten nicht geladen werden. Prüfe den Ordner img/ neben index.html.',
     controls: 'Regler', language: 'Sprache',
     series: 'Fotoserie',
     series1: 'Tal', series2: 'Bach', series3: 'See', series4: 'Berg',
@@ -358,8 +375,24 @@ const photos = SETS.map(set => set.map(src => {
   return im;
 }));
 let photosReady = false;
-Promise.all(photos.flat().map(im => im.decode ? im.decode().catch(() => {}) : Promise.resolve()))
-  .then(() => { photosReady = true; needsRender = true; });
+let photoFailures = [];
+function waitForImage(im) {
+  return new Promise(resolve => {
+    const finish = () => resolve({ src: im.src, ok: im.naturalWidth > 0 });
+    if (im.complete) {
+      finish();
+      return;
+    }
+    im.addEventListener('load', finish, { once: true });
+    im.addEventListener('error', finish, { once: true });
+  });
+}
+Promise.all(photos.flat().map(waitForImage)).then(results => {
+  photoFailures = results.filter(result => !result.ok).map(result => result.src);
+  photosReady = true;
+  updatePhotoNotice();
+  needsRender = true;
+});
 
 /* ============================== state ============================== */
 
@@ -676,12 +709,98 @@ function stepAudio() {
 /* ============================== drawing ============================== */
 
 function drawCover(im, alpha) {
-  if (!im.naturalWidth) return;
+  if (!im || !im.naturalWidth) return false;
   const sc = Math.max(W / im.naturalWidth, H / im.naturalHeight);
   const w = im.naturalWidth * sc, h = im.naturalHeight * sc;
   ctx.globalAlpha = alpha;
   ctx.drawImage(im, (W - w) / 2, (H - h) / 2, w, h);
   ctx.globalAlpha = 1;
+  return true;
+}
+
+function updatePhotoNotice() {
+  const notice = document.getElementById('photoNotice');
+  if (!notice) return;
+  if (photoFailures.length === 0) {
+    notice.hidden = true;
+    notice.textContent = '';
+    return;
+  }
+  notice.textContent = T.photoWarning.replace('{count}', String(photoFailures.length));
+  notice.hidden = false;
+}
+
+function drawFallbackScene() {
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#172442');
+  sky.addColorStop(0.48, '#566b91');
+  sky.addColorStop(0.72, '#d8c7c0');
+  sky.addColorStop(1, '#e8edf6');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+
+  const ridge = (points, color) => {
+    ctx.beginPath();
+    ctx.moveTo(points[0][0] * W, points[0][1] * H);
+    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0] * W, points[i][1] * H);
+    ctx.lineTo(W, H * 0.78);
+    ctx.lineTo(0, H * 0.78);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  };
+  ridge([[0,.59],[.12,.49],[.23,.55],[.38,.39],[.50,.54],[.63,.43],[.78,.56],[.90,.45],[1,.57]], '#7485ad');
+  ridge([[0,.69],[.16,.57],[.29,.64],[.43,.53],[.56,.68],[.72,.56],[.88,.66],[1,.56]], '#465a83');
+
+  const ground = ctx.createLinearGradient(0, H * .66, 0, H);
+  ground.addColorStop(0, '#dfe9f7');
+  ground.addColorStop(1, '#f8fbff');
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, H * .67, W, H * .33);
+  ctx.beginPath();
+  ctx.moveTo(0, H * .79);
+  ctx.bezierCurveTo(W * .22, H * .72, W * .34, H * .84, W * .52, H * .78);
+  ctx.bezierCurveTo(W * .70, H * .72, W * .82, H * .84, W, H * .76);
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  ctx.fillStyle = '#f4f8ff'; ctx.fill();
+
+  const drawPine = (x, base, size) => {
+    ctx.fillStyle = '#18312e';
+    ctx.fillRect(x - size * .035, base - size * .20, size * .07, size * .20);
+    for (let i = 0; i < 4; i++) {
+      const y = base - size * (.22 + i * .19);
+      const half = size * (.34 - i * .055);
+      ctx.beginPath(); ctx.moveTo(x, y - size * .27);
+      ctx.lineTo(x - half, y + size * .12); ctx.lineTo(x + half, y + size * .12);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(242,248,255,.78)'; ctx.lineWidth = Math.max(1, size * .018);
+      ctx.beginPath(); ctx.moveTo(x, y - size * .18); ctx.lineTo(x - half * .72, y + size * .07); ctx.stroke();
+    }
+  };
+  for (let i = 0; i < 11; i++) {
+    const x = W * (0.04 + i * .092);
+    drawPine(x, H * (0.77 + (i % 3) * .025), H * (.11 + (i % 4) * .025));
+  }
+
+  const cx = W * .68, base = H * .80, bw = Math.min(W * .22, H * .23), bh = H * .14;
+  ctx.fillStyle = '#4a3526';
+  ctx.fillRect(cx - bw * .5, base - bh, bw, bh);
+  ctx.fillStyle = '#2a211d';
+  ctx.beginPath(); ctx.moveTo(cx - bw * .58, base - bh); ctx.lineTo(cx, base - bh - bh * .62);
+  ctx.lineTo(cx + bw * .58, base - bh); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#e9f0fb';
+  ctx.beginPath(); ctx.moveTo(cx - bw * .61, base - bh + 2); ctx.lineTo(cx, base - bh - bh * .66);
+  ctx.lineTo(cx + bw * .61, base - bh + 2); ctx.lineTo(cx + bw * .53, base - bh + bh * .08);
+  ctx.lineTo(cx, base - bh - bh * .52); ctx.lineTo(cx - bw * .53, base - bh + bh * .08); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#f7c887';
+  ctx.fillRect(cx - bw * .27, base - bh * .62, bw * .15, bh * .24);
+  ctx.fillRect(cx + bw * .05, base - bh * .62, bw * .15, bh * .24);
+  ctx.fillStyle = '#35271d';
+  ctx.fillRect(cx + bw * .27, base - bh * .68, Math.max(5, bw * .06), bh * .31);
+  ctx.restore();
 }
 
 function drawFlakes(night) {
@@ -710,6 +829,9 @@ function draw() {
   }
   const b = photoBlend(cycleT);
   const set = photos[setIdx];
+  const primaryLoaded = !!set[b.i].naturalWidth;
+  const secondaryLoaded = b.fade <= 0.001 || !!set[b.j].naturalWidth;
+  if (!primaryLoaded || !secondaryLoaded) drawFallbackScene();
   drawCover(set[b.i], 1);
   if (b.fade > 0.001) drawCover(set[b.j], b.fade);
 
@@ -877,6 +999,9 @@ function applyLang(code) {
     if (typeof v === 'string') el.textContent = v;
   }
   handle.setAttribute('aria-label', T._handle);
+  openBtn.setAttribute('aria-label', T._open);
+  closeBtn.setAttribute('aria-label', T._close);
+  updatePhotoNotice();
   for (const b of langSeg.querySelectorAll('button')) b.classList.toggle('on', b.dataset.l === code);
   updatePhaseLabel();
   updateSnowLabel();
@@ -1027,7 +1152,10 @@ chSliders.addEventListener('click', e => {
   btn.classList.toggle('on', audio[key]);
   updateAudio();
 });
-handle.addEventListener('click', () => panel.classList.toggle('open'));
+handle.addEventListener('click', () => {
+  const isOpen = panel.classList.toggle('open');
+  handle.setAttribute('aria-expanded', String(isOpen));
+});
 
 /* ============================== boot ============================== */
 
