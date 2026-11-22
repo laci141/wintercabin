@@ -213,7 +213,7 @@
     </div>
   </div>
 
-  <p class="hint" data-t="hint">A napszak csúszka a négy fotó — napkelte, dél, délután, este — között úszik át.</p>
+  <p class="hint" data-t="hint">A napszak csúszka a fotók — napkelte, dél, délután, este, hold — között úszik át.</p>
 </div>
 
 <div id="fade"></div>
@@ -250,11 +250,11 @@ const I18N = {
     series: 'Fotósorozat', series1: 'Séria 1', series2: 'Séria 2', series3: 'Séria 3', series4: 'Séria 4',
     snow: 'Hóesés', snowLevels: ['Szállingózás', 'Kitartó', 'Sűrű', 'Hóvihar'],
     time: 'Napszak', auto: 'Auto', speed: 'Sebesség',
-    phases: ['Napkelte', 'Dél', 'Délután', 'Este'],
+    phases: ['Napkelte', 'Dél', 'Délután', 'Este', 'Hold'],
     wind: 'Szél', windCalm: 'Szélcsend', windBreezy: 'Szellő', windStormy: 'Viharos',
     sound: 'Hang', on: 'Be',
     audWind: 'Szél', audFire: 'Tűz', audPad: 'Háttér',
-    hint: 'A napszak csúszka a négy fotó — napkelte, dél, délután, este — között úszik át.'
+    hint: 'A napszak csúszka a fotók — napkelte, dél, délután, este, hold — között úszik át.'
   },
   en: {
     _html: 'en', _handle: 'Controls',
@@ -262,11 +262,11 @@ const I18N = {
     series: 'Photo series', series1: 'Series 1', series2: 'Series 2', series3: 'Series 3', series4: 'Series 4',
     snow: 'Snowfall', snowLevels: ['Light flurry', 'Steady', 'Heavy', 'Snowstorm'],
     time: 'Time of day', auto: 'Auto', speed: 'Speed',
-    phases: ['Sunrise', 'Noon', 'Afternoon', 'Evening'],
+    phases: ['Sunrise', 'Noon', 'Afternoon', 'Evening', 'Moon'],
     wind: 'Wind', windCalm: 'Calm', windBreezy: 'Breezy', windStormy: 'Stormy',
     sound: 'Sound', on: 'On',
     audWind: 'Wind', audFire: 'Fire', audPad: 'Ambience',
-    hint: 'The time-of-day slider crossfades between the four photos — sunrise, noon, afternoon, evening.'
+    hint: 'The time-of-day slider crossfades between the photos — sunrise, noon, afternoon, evening, moon.'
   },
   ro: {
     _html: 'ro', _handle: 'Comenzi',
@@ -274,11 +274,11 @@ const I18N = {
     series: 'Serie foto', series1: 'Seria 1', series2: 'Seria 2', series3: 'Seria 3', series4: 'Seria 4',
     snow: 'Ninsoare', snowLevels: ['Fulgi rari', 'Constantă', 'Deasă', 'Viscol'],
     time: 'Momentul zilei', auto: 'Auto', speed: 'Viteză',
-    phases: ['Răsărit', 'Amiază', 'După-amiază', 'Seară'],
+    phases: ['Răsărit', 'Amiază', 'După-amiază', 'Seară', 'Lună'],
     wind: 'Vânt', windCalm: 'Calm', windBreezy: 'Briză', windStormy: 'Furtunos',
     sound: 'Sunet', on: 'Pornit',
     audWind: 'Vânt', audFire: 'Foc', audPad: 'Ambianță',
-    hint: 'Cursorul pentru momentul zilei trece lin între cele patru fotografii — răsărit, amiază, după-amiază, seară.'
+    hint: 'Cursorul pentru momentul zilei trece lin între fotografii — răsărit, amiază, după-amiază, seară, lună.'
   },
   de: {
     _html: 'de', _handle: 'Regler',
@@ -286,11 +286,11 @@ const I18N = {
     series: 'Fotoserie', series1: 'Serie 1', series2: 'Serie 2', series3: 'Serie 3', series4: 'Serie 4',
     snow: 'Schneefall', snowLevels: ['Leichtes Rieseln', 'Stetig', 'Dicht', 'Schneesturm'],
     time: 'Tageszeit', auto: 'Auto', speed: 'Tempo',
-    phases: ['Sonnenaufgang', 'Mittag', 'Nachmittag', 'Abend'],
+    phases: ['Sonnenaufgang', 'Mittag', 'Nachmittag', 'Abend', 'Mond'],
     wind: 'Wind', windCalm: 'Windstill', windBreezy: 'Brise', windStormy: 'Stürmisch',
     sound: 'Ton', on: 'An',
     audWind: 'Wind', audFire: 'Feuer', audPad: 'Ambiente',
-    hint: 'Der Tageszeit-Regler blendet sanft zwischen den vier Fotos über — Sonnenaufgang, Mittag, Nachmittag, Abend.'
+    hint: 'Der Tageszeit-Regler blendet sanft zwischen den Fotos über — Sonnenaufgang, Mittag, Nachmittag, Abend, Mond.'
   }
 };
 let lang = 'hu';
@@ -299,10 +299,10 @@ let T = I18N.hu;
 /* ============================== photos ============================== */
 
 const SETS = [
-  ['img/a-napkelte.jpg', 'img/a-del.jpg', 'img/a-delutan.jpg', 'img/a-este.jpg'],
-  ['img/b-napkelte.jpg', 'img/b-del.jpg', 'img/b-delutan.jpg', 'img/b-este.jpg'],
-  ['img/c-napkelte.jpg', 'img/c-del.jpg', 'img/c-delutan.jpg', 'img/c-este.jpg'],
-  ['img/d-napkelte.jpg', 'img/d-del.jpg', 'img/d-delutan.jpg', 'img/d-este.jpg']
+  ['img/a-napkelte.jpg', 'img/a-del.jpg', 'img/a-delutan.jpg', 'img/a-este.jpg', 'img/a-hold.jpg'],
+  ['img/b-napkelte.jpg', 'img/b-del.jpg', 'img/b-delutan.jpg', 'img/b-este.jpg', 'img/b-hold.jpg'],
+  ['img/c-napkelte.jpg', 'img/c-del.jpg', 'img/c-delutan.jpg', 'img/c-este.jpg', 'img/c-hold.jpg'],
+  ['img/d-napkelte.jpg', 'img/d-del.jpg', 'img/d-delutan.jpg', 'img/d-este.jpg', 'img/d-hold.jpg']
 ];
 let setIdx = 0;
 const photos = SETS.map(set => set.map(src => {
@@ -325,7 +325,7 @@ let W = 0, H = 0, dpr = 1, isMobile = false;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let simT = 0;
-let cycleT = 0;                     // 0 sunrise -> 0.25 noon -> 0.5 afternoon -> 0.75 evening -> 1.0 sunrise
+let cycleT = 0;                     // 0 sunrise -> ... -> evening -> moon -> 1.0 sunrise
 let autoCycle = true;
 const CYCLE_SECONDS = 90;
 let cycleSpeed = 1;                 // 0.2x ... 4x — time-of-day cycle rate
@@ -338,33 +338,42 @@ let wind = 0, gustEnv = 0, gustDir = 1, gustAmp = 1;
 let gustState = 'idle', gustClock = 0, nextGust = 6;
 const WIND_CFG = { calm: { base: 0.02, gust: 0.30 }, breezy: { base: 0.14, gust: 0.62 }, stormy: { base: 0.40, gust: 1.05 } };
 
-/* wide, ultra-smooth crossfade across sunrise -> noon -> afternoon -> evening -> sunrise */
+/* wide, ultra-smooth crossfade across all 5 frames in each series */
 function photoBlend(u) {
   u = ((u % 1) + 1) % 1;
-  const p = u * 4;
-  const i = Math.floor(p) % 4, j = (i + 1) % 4;
+  const count = SETS[0].length;
+  const p = u * count;
+  const i = Math.floor(p) % count, j = (i + 1) % count;
   const f = p - Math.floor(p);
   // start blending at 0.25 across 0.75 of each phase (~250% wider blend band) + triple smoothstep
   const fade = f < 0.25 ? 0 : ultraSmooth((f - 0.25) / 0.75);
   return { i, j, fade };
 }
-/* how "night" the view is — the este photo's weight drives flake glow and the ambience */
+/* how "night" the view is — este (index 3) and hold (index 4) drive flake glow and ambience */
 function nightAmount(u) {
   const b = photoBlend(u);
   let n = 0;
-  if (b.i === 3) n += 1 - b.fade;
-  if (b.j === 3) n += b.fade;
-  return n;
+  if (b.i === 3 || b.i === 4) n += 1 - b.fade;
+  if (b.j === 3 || b.j === 4) n += b.fade;
+  return clamp(n, 0, 1);
+}
+/* weight of the procedural 3/4 waxing gibbous moon on the right side during the moon phase */
+function moonAmount(u) {
+  const b = photoBlend(u);
+  let m = 0;
+  if (b.i === 4) m += 1 - b.fade;
+  if (b.j === 4) m += b.fade;
+  return clamp(m, 0, 1);
 }
 /* continuous, ultra-smooth lighting curve around the full 0..1 day cycle:
    - morning lift peaks gently as day opens and eases smoothly toward noon
-   - evening darkening ramps smoothly through afternoon into evening (u ~ 0.75) and eases smoothly into sunrise */
+   - evening darkening reduced by 75% (25% of previous depth) for softer evening tones */
 function cycleLightAdjustment(u) {
   u = ((u % 1) + 1) % 1;
-  const morningLift = circularBell(u, 0.12, 0.24);
-  // evening bell centered around 0.78 (evening photo) with wide half-width for soft entry and exit
-  const eveningBell = circularBell(u, 0.78, 0.34);
-  const deepNightCore = circularBell(u, 0.75, 0.16);
+  const morningLift = circularBell(u, 0.10, 0.20);
+  // evening bell centered around este (index 3 -> ~0.70 of 5-frame cycle)
+  const eveningBell = circularBell(u, 0.70, 0.24);
+  const deepNightCore = circularBell(u, 0.70, 0.14);
   return {
     brighten: morningLift,
     darken: eveningBell,
@@ -597,6 +606,56 @@ function drawCover(im, alpha) {
   ctx.globalAlpha = 1;
 }
 
+/* procedural 3/4 waxing gibbous moon on the right side, 50% smaller than reference */
+function drawProceduralMoon(amount) {
+  if (amount <= 0.005) return;
+  const mx = W * 0.78;
+  const my = H * 0.18;
+  // 50% smaller radius than the ~0.042*H moon in the hold images
+  const r = clamp(H * 0.021, 10, 24);
+
+  ctx.save();
+  ctx.globalAlpha = amount;
+
+  // soft silvery halo around the moon
+  const haloR = r * 4.2;
+  const hg = ctx.createRadialGradient(mx, my, r * 0.4, mx, my, haloR);
+  hg.addColorStop(0, 'rgba(232, 240, 255, 0.28)');
+  hg.addColorStop(0.4, 'rgba(210, 224, 252, 0.09)');
+  hg.addColorStop(1, 'rgba(210, 224, 252, 0)');
+  ctx.fillStyle = hg;
+  ctx.beginPath();
+  ctx.arc(mx, my, haloR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // clip to the moon disc and carve a ~3/4 waxing gibbous phase (lit on right side)
+  ctx.beginPath();
+  ctx.arc(mx, my, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  const mg = ctx.createRadialGradient(mx + r * 0.25, my - r * 0.25, r * 0.1, mx, my, r);
+  mg.addColorStop(0, '#ffffff');
+  mg.addColorStop(0.7, '#eef3ff');
+  mg.addColorStop(1, '#c7d5f2');
+  ctx.fillStyle = mg;
+  ctx.fillRect(mx - r, my - r, r * 2, r * 2);
+
+  // subtle lunar mare shading
+  ctx.fillStyle = 'rgba(135, 152, 192, 0.22)';
+  ctx.beginPath();
+  ctx.arc(mx + r * 0.15, my - r * 0.12, r * 0.34, 0, Math.PI * 2);
+  ctx.arc(mx - r * 0.05, my + r * 0.28, r * 0.26, 0, Math.PI * 2);
+  ctx.fill();
+
+  // shadow circle on the left side leaving ~3/4 illuminated on the right
+  ctx.fillStyle = 'rgba(10, 16, 34, 0.88)';
+  ctx.beginPath();
+  ctx.arc(mx - r * 0.56, my, r * 0.96, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
 function drawFlakes(night) {
   /* balanced evening glow boost so flakes stay crisp in night without over-glowing */
   const boost = 1 + night * 0.28;
@@ -629,6 +688,7 @@ function draw() {
   if (b.fade > 0.001) drawCover(set[b.j], b.fade);
 
   const night = nightAmount(cycleT);
+  const moon = moonAmount(cycleT);
   const adj = cycleLightAdjustment(cycleT);
 
   /* smooth morning lift */
@@ -640,22 +700,25 @@ function draw() {
     ctx.restore();
   }
 
-  /* +150% evening darkening (2.5x base depth) + subtle blue-night tint around evening */
+  /* evening darkening reduced by 75% (25% of previous depth) + subtle blue-night tint around evening */
   if (adj.darken > 0.001) {
-    ctx.fillStyle = `rgba(5, 9, 23, ${Math.min(0.75, 0.525 * adj.darken)})`;
+    ctx.fillStyle = `rgba(5, 9, 23, ${Math.min(0.20, 0.13125 * adj.darken)})`;
     ctx.fillRect(0, 0, W, H);
   }
   if (adj.deepNight > 0.001) {
     ctx.save();
     ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = `rgba(42, 60, 104, ${0.38 * adj.deepNight})`;
+    ctx.fillStyle = `rgba(42, 60, 104, ${0.095 * adj.deepNight})`;
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
 
+  /* procedural 3/4 moon on the right side (50% smaller than reference) */
+  drawProceduralMoon(moon);
+
   /* blowing-snow veil during gusts — kept subtle in evening so flakes stand out */
   if (gustEnv > 0.08 && softSprite) {
-    const va = gustEnv * (0.10 + intensity * 0.12) * (1 - 0.50 * adj.darken);
+    const va = gustEnv * (0.10 + intensity * 0.12) * (1 - 0.25 * adj.darken);
     for (let k = 0; k < 4; k++) {
       const vy = H * (0.72 + k * 0.06);
       const speed = (170 + k * 90) * gustDir;
@@ -844,8 +907,8 @@ handle.addEventListener('click', () => panel.classList.toggle('open'));
 if (reduceMotion) {
   autoCycle = false;
   autoTime.checked = false;
-  cycleT = 0.75;                 // evening: warm lit windows, calm base frame
-  timeRange.value = '0.75';
+  cycleT = 0.70;                 // evening: warm lit windows, calm base frame
+  timeRange.value = '0.70';
 }
 let saved = null;
 try { saved = localStorage.getItem('wc-lang'); } catch (e) { /* private mode */ }
