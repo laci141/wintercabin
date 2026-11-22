@@ -17,7 +17,7 @@
 
   /* Glass control panel — desktop: compact, top-right, closable */
   .glass-panel {
-    position: fixed; right: 20px; top: 20px; bottom: auto; left: auto; width: 210px; box-sizing: border-box; z-index: 20;
+    position: fixed; right: 20px; top: 20px; bottom: auto; left: auto; width: 224px; box-sizing: border-box; z-index: 20;
     background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
     border: 1px solid rgba(255,255,255,.14);
     border-radius: 14px;
@@ -27,6 +27,8 @@
     padding: 10px 10px 8px;
     color: #eef3fb;
     user-select: none;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
   }
   .glass-panel h1 { margin: 0 0 7px; font-size: 13px; font-weight: 600; letter-spacing: .03em; padding-right: 18px; }
   .glass-panel h1 span { opacity: .55; font-weight: 400; font-size: 10px; margin-left: 4px; }
@@ -73,6 +75,20 @@
   }
   .seg button:hover, .series-table button:hover { background: rgba(255,255,255,.16); }
   .seg button.on, .series-table button.on { background: rgba(255,180,92,.30); border-color: rgba(255,180,92,.55); }
+
+  /* Individual audio channel sliders (0..100) */
+  .ch-list { display: flex; flex-direction: column; gap: 5px; margin-top: 5px; }
+  .ch-row { display: grid; grid-template-columns: 56px 1fr 30px; align-items: center; gap: 6px; font-size: 10.5px; }
+  .ch-btn {
+    padding: 4px 5px; border-radius: 6px; cursor: pointer; font-size: 10px; text-align: center;
+    color: #eef3fb; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+    font-family: inherit; transition: background .2s, border-color .2s;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ch-btn.on { background: rgba(255,180,92,.30); border-color: rgba(255,180,92,.55); }
+  .ch-row input[type="range"] { width: 100%; accent-color: #ffb45c; height: 14px; margin: 0; cursor: pointer; }
+  .ch-val { text-align: right; font-variant-numeric: tabular-nums; opacity: .8; font-size: 10px; }
+
   /* toggle is its own <label for>, never nested in another label; padding = hit area */
   .toggle { display: flex; align-items: center; gap: 4px; font-size: 10.5px; cursor: pointer; opacity: .9;
             padding: 5px 0 5px 6px; min-height: 24px; box-sizing: border-box; }
@@ -132,7 +148,8 @@
     /* full-size, thumb-friendly controls on touch screens */
     .ctl { margin-bottom: 10px; }
     .ctl .lbl, .ctl > label { font-size: 11.5px; margin-bottom: 4px; }
-    .ctl input[type="range"] { height: 40px; }
+    .ctl input[type="range"] { height: 34px; }
+    .ch-row input[type="range"] { height: 32px; }
     .seg { gap: 4px; }
     .series-table { gap: 4px; }
     .seg button, .series-table button { font-size: 10.5px; padding: 7px 2px; border-radius: 9px; min-height: 40px; }
@@ -206,10 +223,23 @@
       <label class="toggle" for="soundOn"><input type="checkbox" id="soundOn"> <span data-t="on">Be</span></label>
     </div>
     <input type="range" id="volRange" aria-labelledby="soundTitle" min="0" max="1" step="0.01" value="0.6">
-    <div class="seg stack" id="audSeg">
-      <button data-a="wind" class="on" data-t="audWind">Szél</button>
-      <button data-a="fire" class="on" data-t="audFire">Tűz</button>
-      <button data-a="pad" class="on" data-t="audPad">Háttér</button>
+
+    <div class="ch-list" id="chSliders">
+      <div class="ch-row">
+        <button type="button" class="ch-btn on" data-a="wind" data-t="audWind">Szél</button>
+        <input type="range" id="windVolRange" min="0" max="100" step="1" value="70" aria-label="Szél hangerő">
+        <span class="ch-val" id="windVolVal">70</span>
+      </div>
+      <div class="ch-row">
+        <button type="button" class="ch-btn on" data-a="fire" data-t="audFire">Tűz</button>
+        <input type="range" id="fireVolRange" min="0" max="100" step="1" value="70" aria-label="Tűz hangerő">
+        <span class="ch-val" id="fireVolVal">70</span>
+      </div>
+      <div class="ch-row">
+        <button type="button" class="ch-btn on" data-a="pad" data-t="audPad">Háttér</button>
+        <input type="range" id="padVolRange" min="0" max="100" step="1" value="70" aria-label="Háttér hangerő">
+        <span class="ch-val" id="padVolVal">70</span>
+      </div>
     </div>
   </div>
 
@@ -357,7 +387,7 @@ function nightAmount(u) {
   if (b.j === 3 || b.j === 4) n += b.fade;
   return clamp(n, 0, 1);
 }
-/* weight of the procedural 3/4 waxing gibbous moon on the right side during the moon phase */
+/* weight of the moon phase (hold image index 4), darkened by 50% */
 function moonAmount(u) {
   const b = photoBlend(u);
   let m = 0;
@@ -367,7 +397,7 @@ function moonAmount(u) {
 }
 /* continuous, ultra-smooth lighting curve around the full 0..1 day cycle:
    - morning lift peaks gently as day opens and eases smoothly toward noon
-   - evening darkening reduced by 75% (25% of previous depth) for softer evening tones */
+   - evening darkening is 25% darker than the previous baseline (0.164 * eveningBell) */
 function cycleLightAdjustment(u) {
   u = ((u % 1) + 1) % 1;
   const morningLift = circularBell(u, 0.10, 0.20);
@@ -384,21 +414,23 @@ function cycleLightAdjustment(u) {
 /* ============================== snowflakes (flat typed arrays) ============================== */
 
 // up to 4x baseline count (original + 300% more) at maximum slider value
-const MAXF = 3200;
+const MAXF = 3600;
 const fx = new Float32Array(MAXF), fy = new Float32Array(MAXF), fs = new Float32Array(MAXF),
       fv = new Float32Array(MAXF), fp = new Float32Array(MAXF), fa = new Float32Array(MAXF),
       fo = new Float32Array(MAXF);
 const fl = new Uint8Array(MAXF);
 let activeFlakes = 0;
 
+// More smaller flakes, 40% fewer large flakes (layer 2 weight reduced from 0.20 to 0.12)
 const FLAYER = [
-  { s: [1.0, 1.5], v: [16, 30],  amp: [2, 6],   al: [0.35, 0.55], freq: 0.7 },
-  { s: [2.0, 3.0], v: [42, 70],  amp: [8, 18],  al: [0.55, 0.80], freq: 0.9 },
-  { s: [4.0, 6.0], v: [85, 140], amp: [16, 32], al: [0.50, 0.80], freq: 1.15 }
+  { s: [0.8, 1.35], v: [16, 30],  amp: [2, 6],   al: [0.35, 0.58], freq: 0.7 },
+  { s: [1.6, 2.5],  v: [40, 68],  amp: [7, 16],  al: [0.52, 0.78], freq: 0.9 },
+  { s: [3.2, 4.8],  v: [80, 132], amp: [14, 28], al: [0.45, 0.72], freq: 1.15 }
 ];
 function spawnFlake(i, anywhere) {
   const r = Math.random();
-  const L = r < 0.45 ? 0 : (r < 0.80 ? 1 : 2);
+  // 0.53 tiny, 0.35 medium, 0.12 large (40% fewer large flakes than 0.20)
+  const L = r < 0.53 ? 0 : (r < 0.88 ? 1 : 2);
   const P = FLAYER[L];
   fl[i] = L;
   fx[i] = Math.random() * (W + 80) - 40;
@@ -411,10 +443,10 @@ function spawnFlake(i, anywhere) {
 }
 function targetFlakeCount() {
   if (reduceMotion) return 0;
-  // allow up to +300% more flakes (4x at intensity = 1)
-  const boostMult = 1 + intensity * 3;
-  const n = Math.round((140 + intensity * 560) * boostMult);
-  return Math.min(MAXF, Math.round(n * (isMobile ? 0.45 : 1)));
+  // more flakes overall with higher share of smaller flakes
+  const boostMult = 1 + intensity * 3.2;
+  const n = Math.round((180 + intensity * 680) * boostMult);
+  return Math.min(MAXF, Math.round(n * (isMobile ? 0.5 : 1)));
 }
 function setActiveFlakes(n) {
   if (n > activeFlakes) for (let i = activeFlakes; i < n; i++) spawnFlake(i, true);
@@ -481,7 +513,16 @@ function updateWind(dt) {
 
 /* ============================== audio (fully procedural, Web Audio API) ============================== */
 
-const audio = { on: false, vol: 0.6, wind: true, fire: true, pad: true };
+const audio = {
+  on: false,
+  vol: 0.6,
+  wind: true,
+  fire: true,
+  pad: true,
+  windLevel: 0.7,
+  fireLevel: 0.7,
+  padLevel: 0.7
+};
 let AC = null, AN = null, nextCrackle = 0;
 
 function makeNoiseBuffer(seconds) {
@@ -569,23 +610,29 @@ function updateAudio() {
   AN.master.gain.setTargetAtTime(0.9 * audio.vol * on, t, 0.2);
   const wAbs = Math.abs(wind);
   const night = nightAmount(cycleT);
-  if (audio.wind) {
-    AN.windGain.gain.setTargetAtTime(0.06 + wAbs * 0.34, t, 0.4);
+
+  const wScale = audio.wind ? audio.windLevel : 0;
+  if (wScale > 0) {
+    AN.windGain.gain.setTargetAtTime((0.06 + wAbs * 0.34) * wScale, t, 0.35);
     AN.windBp.frequency.setTargetAtTime(300 + wAbs * 700 + gustEnv * 260, t, 0.35);
-    AN.hissGain.gain.setTargetAtTime(gustEnv * 0.10 + wAbs * 0.05, t, 0.3);
+    AN.hissGain.gain.setTargetAtTime((gustEnv * 0.10 + wAbs * 0.05) * wScale, t, 0.3);
   } else {
     AN.windGain.gain.setTargetAtTime(0, t, 0.2);
     AN.hissGain.gain.setTargetAtTime(0, t, 0.2);
   }
-  AN.fireBed.gain.setTargetAtTime(audio.fire ? 0.05 : 0, t, 0.3);
-  if (!audio.fire) AN.crackleGain.gain.setTargetAtTime(0, t, 0.1);
-  AN.padGain.gain.setTargetAtTime(audio.pad ? 0.05 + night * 0.03 : 0, t, 0.8);
+
+  const fScale = audio.fire ? audio.fireLevel : 0;
+  AN.fireBed.gain.setTargetAtTime(0.05 * fScale, t, 0.3);
+  if (fScale <= 0) AN.crackleGain.gain.setTargetAtTime(0, t, 0.1);
+
+  const pScale = audio.pad ? audio.padLevel : 0;
+  AN.padGain.gain.setTargetAtTime((0.05 + night * 0.03) * pScale, t, 0.7);
 }
 function stepAudio() {
-  if (!AC || !AN || !audio.on || !audio.fire) return;
+  if (!AC || !AN || !audio.on || !audio.fire || audio.fireLevel <= 0) return;
   if (simT >= nextCrackle) {
     const t = AC.currentTime;
-    const peak = 0.10 + Math.random() * 0.22;
+    const peak = (0.10 + Math.random() * 0.22) * audio.fireLevel;
     AN.crackleGain.gain.cancelScheduledValues(t);
     AN.crackleGain.gain.setValueAtTime(AN.crackleGain.gain.value, t);
     AN.crackleGain.gain.linearRampToValueAtTime(peak, t + 0.004 + Math.random() * 0.008);
@@ -606,56 +653,6 @@ function drawCover(im, alpha) {
   ctx.globalAlpha = 1;
 }
 
-/* procedural 3/4 waxing gibbous moon on the right side, 50% smaller than reference */
-function drawProceduralMoon(amount) {
-  if (amount <= 0.005) return;
-  const mx = W * 0.78;
-  const my = H * 0.18;
-  // 50% smaller radius than the ~0.042*H moon in the hold images
-  const r = clamp(H * 0.021, 10, 24);
-
-  ctx.save();
-  ctx.globalAlpha = amount;
-
-  // soft silvery halo around the moon
-  const haloR = r * 4.2;
-  const hg = ctx.createRadialGradient(mx, my, r * 0.4, mx, my, haloR);
-  hg.addColorStop(0, 'rgba(232, 240, 255, 0.28)');
-  hg.addColorStop(0.4, 'rgba(210, 224, 252, 0.09)');
-  hg.addColorStop(1, 'rgba(210, 224, 252, 0)');
-  ctx.fillStyle = hg;
-  ctx.beginPath();
-  ctx.arc(mx, my, haloR, 0, Math.PI * 2);
-  ctx.fill();
-
-  // clip to the moon disc and carve a ~3/4 waxing gibbous phase (lit on right side)
-  ctx.beginPath();
-  ctx.arc(mx, my, r, 0, Math.PI * 2);
-  ctx.clip();
-
-  const mg = ctx.createRadialGradient(mx + r * 0.25, my - r * 0.25, r * 0.1, mx, my, r);
-  mg.addColorStop(0, '#ffffff');
-  mg.addColorStop(0.7, '#eef3ff');
-  mg.addColorStop(1, '#c7d5f2');
-  ctx.fillStyle = mg;
-  ctx.fillRect(mx - r, my - r, r * 2, r * 2);
-
-  // subtle lunar mare shading
-  ctx.fillStyle = 'rgba(135, 152, 192, 0.22)';
-  ctx.beginPath();
-  ctx.arc(mx + r * 0.15, my - r * 0.12, r * 0.34, 0, Math.PI * 2);
-  ctx.arc(mx - r * 0.05, my + r * 0.28, r * 0.26, 0, Math.PI * 2);
-  ctx.fill();
-
-  // shadow circle on the left side leaving ~3/4 illuminated on the right
-  ctx.fillStyle = 'rgba(10, 16, 34, 0.88)';
-  ctx.beginPath();
-  ctx.arc(mx - r * 0.56, my, r * 0.96, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore();
-}
-
 function drawFlakes(night) {
   /* balanced evening glow boost so flakes stay crisp in night without over-glowing */
   const boost = 1 + night * 0.28;
@@ -663,8 +660,8 @@ function drawFlakes(night) {
   for (let i = 0; i < activeFlakes; i++) {
     const L = fl[i];
     if (L === 2 && softSprite) {
-      // softSprite reaches 0 alpha at radius 0.5*d; 2.3*fs gives a visible core matching radius fs[i]
-      const d = fs[i] * 2.3;
+      // softSprite reaches 0 alpha at radius 0.5*d; 2.2*fs gives a visible core matching radius fs[i]
+      const d = fs[i] * 2.2;
       ctx.globalAlpha = Math.min(1, fo[i] * (1 + night * 0.18));
       ctx.drawImage(softSprite, fx[i] - d / 2, fy[i] - d / 2, d, d);
     } else {
@@ -700,21 +697,29 @@ function draw() {
     ctx.restore();
   }
 
-  /* evening darkening reduced by 75% (25% of previous depth) + subtle blue-night tint around evening */
+  /* evening darkening (+25% darker than previous baseline) */
   if (adj.darken > 0.001) {
-    ctx.fillStyle = `rgba(5, 9, 23, ${Math.min(0.20, 0.13125 * adj.darken)})`;
+    ctx.fillStyle = `rgba(5, 9, 23, ${Math.min(0.28, 0.164 * adj.darken)})`;
     ctx.fillRect(0, 0, W, H);
   }
   if (adj.deepNight > 0.001) {
     ctx.save();
     ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = `rgba(42, 60, 104, ${0.095 * adj.deepNight})`;
+    ctx.fillStyle = `rgba(42, 60, 104, ${0.12 * adj.deepNight})`;
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
 
-  /* procedural 3/4 moon on the right side (50% smaller than reference) */
-  drawProceduralMoon(moon);
+  /* moon phase darkened by 50% (preserving the moon inside *-hold.jpg without extra drawn moon) */
+  if (moon > 0.001) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `rgba(88, 106, 152, ${0.50 * moon})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+    ctx.fillStyle = `rgba(4, 7, 18, ${0.32 * moon})`;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   /* blowing-snow veil during gusts — kept subtle in evening so flakes stand out */
   if (gustEnv > 0.08 && softSprite) {
@@ -794,7 +799,13 @@ const phaseLabel = document.getElementById('phaseLabel');
 const autoTime = document.getElementById('autoTime');
 const windSeg = document.getElementById('windSeg');
 const setSeg = document.getElementById('setSeg');
-const audSeg = document.getElementById('audSeg');
+const chSliders = document.getElementById('chSliders');
+const windVolRange = document.getElementById('windVolRange');
+const fireVolRange = document.getElementById('fireVolRange');
+const padVolRange = document.getElementById('padVolRange');
+const windVolVal = document.getElementById('windVolVal');
+const fireVolVal = document.getElementById('fireVolVal');
+const padVolVal = document.getElementById('padVolVal');
 const soundOn = document.getElementById('soundOn');
 const volRange = document.getElementById('volRange');
 const panel = document.getElementById('panel');
@@ -893,11 +904,30 @@ volRange.addEventListener('input', () => {
   audio.vol = parseFloat(volRange.value);
   updateAudio();
 });
-audSeg.addEventListener('click', e => {
-  const btn = e.target.closest('button');
+windVolRange.addEventListener('input', () => {
+  const v = parseInt(windVolRange.value, 10) || 0;
+  audio.windLevel = v / 100;
+  windVolVal.textContent = String(v);
+  updateAudio();
+});
+fireVolRange.addEventListener('input', () => {
+  const v = parseInt(fireVolRange.value, 10) || 0;
+  audio.fireLevel = v / 100;
+  fireVolVal.textContent = String(v);
+  updateAudio();
+});
+padVolRange.addEventListener('input', () => {
+  const v = parseInt(padVolRange.value, 10) || 0;
+  audio.padLevel = v / 100;
+  padVolVal.textContent = String(v);
+  updateAudio();
+});
+chSliders.addEventListener('click', e => {
+  const btn = e.target.closest('.ch-btn');
   if (!btn) return;
-  audio[btn.dataset.a] = !audio[btn.dataset.a];
-  btn.classList.toggle('on', audio[btn.dataset.a]);
+  const key = btn.dataset.a;
+  audio[key] = !audio[key];
+  btn.classList.toggle('on', audio[key]);
   updateAudio();
 });
 handle.addEventListener('click', () => panel.classList.toggle('open'));
