@@ -171,16 +171,16 @@
   <div class="ctl">
     <label><span data-t="series">Fotósorozat</span></label>
     <div class="series-table" id="setSeg">
-      <button data-s="0" class="on" data-t="series1">Séria 1</button>
-      <button data-s="1" data-t="series2">Séria 2</button>
-      <button data-s="2" data-t="series3">Séria 3</button>
-      <button data-s="3" data-t="series4">Séria 4</button>
+      <button data-s="0" class="on" data-t="series1">Völgy</button>
+      <button data-s="1" data-t="series2">Patak</button>
+      <button data-s="2" data-t="series3">Tó</button>
+      <button data-s="3" data-t="series4">Hegy</button>
     </div>
   </div>
 
   <div class="ctl">
     <label for="snowRange"><span data-t="snow">Hóesés</span><span id="snowLabel">Kitartó</span></label>
-    <input type="range" id="snowRange" min="0" max="1" step="0.01" value="0.5">
+    <input type="range" id="snowRange" min="0" max="1.2" step="0.01" value="0.5">
     <label class="toggle" for="snowAutoToggle" style="margin-top:2px;">
       <input type="checkbox" id="snowAutoToggle"> <span data-t="snowAutoCycle">Auto ciklus</span>
     </label>
@@ -282,7 +282,8 @@ const I18N = {
   hu: {
     _html: 'hu', _handle: 'Vezérlők',
     controls: 'vezérlők', language: 'Nyelv',
-    series: 'Fotósorozat', series1: 'Séria 1', series2: 'Séria 2', series3: 'Séria 3', series4: 'Séria 4',
+    series: 'Fotósorozat',
+    series1: 'Völgy', series2: 'Patak', series3: 'Tó', series4: 'Hegy',
     snow: 'Hóesés', snowLevels: ['Szállingózás', 'Kitartó', 'Sűrű', 'Hóvihar'],
     snowAutoCycle: 'Auto ciklus', snowCycleSpeed: 'Ciklus seb.',
     time: 'Napszak', auto: 'Auto', speed: 'Sebesség',
@@ -296,7 +297,8 @@ const I18N = {
   en: {
     _html: 'en', _handle: 'Controls',
     controls: 'controls', language: 'Language',
-    series: 'Photo series', series1: 'Series 1', series2: 'Series 2', series3: 'Series 3', series4: 'Series 4',
+    series: 'Photo series',
+    series1: 'Valley', series2: 'Stream', series3: 'Lake', series4: 'Mountain',
     snow: 'Snowfall', snowLevels: ['Light flurry', 'Steady', 'Heavy', 'Snowstorm'],
     snowAutoCycle: 'Auto cycle', snowCycleSpeed: 'Cycle speed',
     time: 'Time of day', auto: 'Auto', speed: 'Speed',
@@ -310,7 +312,8 @@ const I18N = {
   ro: {
     _html: 'ro', _handle: 'Comenzi',
     controls: 'comenzi', language: 'Limbă',
-    series: 'Serie foto', series1: 'Seria 1', series2: 'Seria 2', series3: 'Seria 3', series4: 'Seria 4',
+    series: 'Serie foto',
+    series1: 'Vale', series2: 'Pârâu', series3: 'Lac', series4: 'Munte',
     snow: 'Ninsoare', snowLevels: ['Fulgi rari', 'Constantă', 'Deasă', 'Viscol'],
     snowAutoCycle: 'Ciclu automat', snowCycleSpeed: 'Viteza ciclului',
     time: 'Momentul zilei', auto: 'Auto', speed: 'Viteză',
@@ -324,7 +327,8 @@ const I18N = {
   de: {
     _html: 'de', _handle: 'Regler',
     controls: 'Regler', language: 'Sprache',
-    series: 'Fotoserie', series1: 'Serie 1', series2: 'Serie 2', series3: 'Serie 3', series4: 'Serie 4',
+    series: 'Fotoserie',
+    series1: 'Tal', series2: 'Bach', series3: 'See', series4: 'Berg',
     snow: 'Schneefall', snowLevels: ['Leichtes Rieseln', 'Stetig', 'Dicht', 'Schneesturm'],
     snowAutoCycle: 'Auto-Zyklus', snowCycleSpeed: 'Zyklusgeschw.',
     time: 'Tageszeit', auto: 'Auto', speed: 'Tempo',
@@ -373,7 +377,11 @@ let cycleSpeed = 1;
 let intensity = 0.5;
 let windMode = 'breezy';
 
-/* snow auto cycle */
+/* snow auto cycle — oscillates between 0.4 (Steady) and 1.2 (dense snowstorm) */
+const SNOW_AUTO_MIN = 0.4;
+const SNOW_AUTO_MAX = 1.2;
+const SNOW_AUTO_MID = (SNOW_AUTO_MIN + SNOW_AUTO_MAX) / 2;   // 0.8
+const SNOW_AUTO_AMP = (SNOW_AUTO_MAX - SNOW_AUTO_MIN) / 2;   // 0.4
 let snowAuto = false;
 let snowAutoSpeed = 1;
 let snowPhase = 0;
@@ -524,22 +532,22 @@ function updateWindDir(dt) {
     windDirPhase += dt * windDirSpeed * 0.15;
     windDirOsc = Math.sin(windDirPhase);
     if (windDirRange) windDirRange.value = windDirOsc.toFixed(3);
+    if (windDirLabel) windDirLabel.textContent = '↔';
   } else {
     windDirOsc = windDirManual;
-  }
-  if (windDirLabel) {
-    if (windDirAuto) windDirLabel.textContent = '↔';
-    else if (windDirOsc > 0.3) windDirLabel.textContent = '→';
-    else if (windDirOsc < -0.3) windDirLabel.textContent = '←';
-    else windDirLabel.textContent = '·';
+    if (windDirLabel) {
+      if (windDirOsc > 0.3) windDirLabel.textContent = '→';
+      else if (windDirOsc < -0.3) windDirLabel.textContent = '←';
+      else windDirLabel.textContent = '·';
+    }
   }
 }
 
-/* Snow auto cycle — smoothly between szállingózás (0) and hóvihar (1) */
+/* Snow auto cycle — smoothly between Kitartó (0.4) and dense snowstorm (1.2) */
 function updateSnowAuto(dt) {
   if (!snowAuto) return;
   snowPhase += dt * snowAutoSpeed * 0.15;
-  intensity = clamp((Math.sin(snowPhase) + 1) / 2, 0, 1);
+  intensity = SNOW_AUTO_MID + SNOW_AUTO_AMP * Math.sin(snowPhase);   // 0.4 … 1.2
   snowRange.value = intensity.toFixed(3);
   updateSnowLabel();
 }
@@ -855,7 +863,8 @@ function updatePhaseLabel() {
   phaseLabel.textContent = T.phases[b.fade > 0.5 ? b.j : b.i];
 }
 function updateSnowLabel() {
-  const i = intensity < 0.2 ? 0 : intensity < 0.6 ? 1 : intensity < 0.85 ? 2 : 3;
+  // thresholds tuned for 0…1.2 range; auto cycle stays 0.4–1.2 (Kitartó…Hóvihar)
+  const i = intensity < 0.3 ? 0 : intensity < 0.7 ? 1 : intensity < 1.0 ? 2 : 3;
   snowLabel.textContent = T.snowLevels[i];
 }
 function applyLang(code) {
@@ -921,9 +930,9 @@ snowAutoToggle.addEventListener('change', () => {
   snowAuto = snowAutoToggle.checked;
   snowAutoSpeedCtl.style.display = snowAuto ? 'block' : 'none';
   if (snowAuto) {
-    // preserve current intensity by picking the corresponding phase
-    const sinVal = clamp(2 * intensity - 1, -1, 1);
-    snowPhase = Math.asin(sinVal);
+    // pick the phase corresponding to the current intensity, so no jump
+    const s = clamp((intensity - SNOW_AUTO_MID) / SNOW_AUTO_AMP, -1, 1);
+    snowPhase = Math.asin(s);
   }
 });
 snowAutoSpeedRange.addEventListener('input', () => {
@@ -971,9 +980,7 @@ windDirAutoCheck.addEventListener('change', () => {
   windDirAuto = windDirAutoCheck.checked;
   windDirSpeedCtl.style.display = windDirAuto ? 'block' : 'none';
   if (windDirAuto) {
-    // start from current direction
     windDirPhase = Math.asin(clamp(windDirManual, -1, 1));
-    if (windDirPhase < -Math.PI / 2) windDirPhase += Math.PI * 2;
   } else {
     windDirManual = windDirOsc;
     windDirRange.value = windDirOsc.toFixed(3);
