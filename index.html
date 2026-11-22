@@ -9,20 +9,18 @@
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
   #scene { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: block; }
 
-  /* White fade-in on load + soft flash on photo-set switch */
   #fade { position: fixed; inset: 0; background: #ffffff; opacity: 1; pointer-events: none;
           transition: opacity 2s ease; z-index: 30; }
   #fade.gone { opacity: 0; }
   #fade.switching { transition: opacity .3s ease; opacity: .92; }
 
-  /* Glass control panel — desktop: compact, top-right, closable */
   .glass-panel {
     position: fixed; right: 20px; top: 20px; bottom: auto; left: auto; width: 224px; box-sizing: border-box; z-index: 20;
     background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
     border: 1px solid rgba(255,255,255,.14);
     border-radius: 14px;
     backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px); /* Safari — required */
+    -webkit-backdrop-filter: blur(15px);
     box-shadow: 0 14px 38px -16px rgba(0,0,0,.75);
     padding: 10px 10px 8px;
     color: #eef3fb;
@@ -34,7 +32,6 @@
   .glass-panel h1 span { opacity: .55; font-weight: 400; font-size: 10px; margin-left: 4px; }
   .glass-panel.closed { display: none; }
 
-  /* close ✕ in the panel's top-right corner */
   #closeBtn {
     position: absolute; top: 7px; right: 7px; width: 18px; height: 18px;
     border-radius: 6px; border: 1px solid rgba(255,255,255,.16);
@@ -44,7 +41,6 @@
   }
   #closeBtn:hover { background: rgba(255,255,255,.18); }
 
-  /* reopen button, top-right corner of the screen */
   #openBtn {
     position: fixed; top: 20px; right: 20px; z-index: 19;
     width: 34px; height: 34px; border-radius: 11px; cursor: pointer;
@@ -58,7 +54,6 @@
   #openBtn:hover { background: rgba(255,255,255,.20); }
   #openBtn.show { display: block; }
 
-  /* photo-series picker: 2 x 2 table */
   .series-table { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
   .ctl { margin-bottom: 8px; }
   .ctl .lbl, .ctl > label { display: flex; justify-content: space-between; align-items: center; gap: 4px;
@@ -76,7 +71,6 @@
   .seg button:hover, .series-table button:hover { background: rgba(255,255,255,.16); }
   .seg button.on, .series-table button.on { background: rgba(255,180,92,.30); border-color: rgba(255,180,92,.55); }
 
-  /* Individual audio channel sliders (0..100) */
   .ch-list { display: flex; flex-direction: column; gap: 5px; margin-top: 5px; }
   .ch-row { display: grid; grid-template-columns: 56px 1fr 30px; align-items: center; gap: 6px; font-size: 10.5px; }
   .ch-btn {
@@ -89,7 +83,6 @@
   .ch-row input[type="range"] { width: 100%; accent-color: #ffb45c; height: 14px; margin: 0; cursor: pointer; }
   .ch-val { text-align: right; font-variant-numeric: tabular-nums; opacity: .8; font-size: 10px; }
 
-  /* toggle is its own <label for>, never nested in another label; padding = hit area */
   .toggle { display: flex; align-items: center; gap: 4px; font-size: 10.5px; cursor: pointer; opacity: .9;
             padding: 5px 0 5px 6px; min-height: 24px; box-sizing: border-box; }
   .toggle input { accent-color: #ffb45c; margin: 0; cursor: pointer; width: 16px; height: 16px; }
@@ -97,12 +90,10 @@
   .hint { font-size: 10px; opacity: .75; margin: 7px 0 0; line-height: 1.4; }
   #handle { display: none; }
 
-  /* keyboard focus ring (mouse clicks keep their look) */
   button:focus-visible, input[type="range"]:focus-visible, input[type="checkbox"]:focus-visible {
     outline: 2px solid #ffb45c; outline-offset: 2px;
   }
 
-  /* Language picker — a real 4-cell table with shared grid lines */
   .lang-table {
     display: grid; grid-template-columns: repeat(4, 1fr);
     border: 1px solid rgba(255,255,255,.16); border-radius: 7px; overflow: hidden;
@@ -117,7 +108,6 @@
   .lang-table button:hover { background: rgba(255,255,255,.16); }
   .lang-table button.on { background: rgba(255,180,92,.30); color: #fff; }
 
-  /* Mobile: bottom drawer, lighter blur, everything 5px from both screen edges */
   @media (max-width: 700px) {
     .glass-panel {
       left: 0; right: 0; bottom: 0; top: auto; width: auto;
@@ -127,14 +117,12 @@
       -webkit-backdrop-filter: blur(11px);
       box-shadow: 0 -12px 32px -14px rgba(0,0,0,.7);
       padding: 0 5px calc(10px + env(safe-area-inset-bottom, 0px));
-      /* closed: keep the 42px handle peek visible above the inset */
       transform: translateY(calc(100% - 42px - env(safe-area-inset-bottom, 0px)));
       transition: transform .35s cubic-bezier(.4, 0, .2, 1);
       max-height: 72vh;
     }
     @supports (height: 1dvh) { .glass-panel { max-height: 72dvh; } }
     .glass-panel.open { transform: none; overflow-y: auto; }
-    /* the drawer has its own handle — the desktop open/close pair is hidden */
     .glass-panel.closed { display: block; }
     #closeBtn, #openBtn { display: none !important; }
     #handle {
@@ -145,7 +133,6 @@
     #handle::after { content: " ▴"; opacity: .6; }
     .glass-panel.open #handle::after { content: " ▾"; }
     .glass-panel h1 { display: none; }
-    /* full-size, thumb-friendly controls on touch screens */
     .ctl { margin-bottom: 10px; }
     .ctl .lbl, .ctl > label { font-size: 11.5px; margin-bottom: 4px; }
     .ctl input[type="range"] { height: 34px; }
@@ -194,6 +181,15 @@
   <div class="ctl">
     <label for="snowRange"><span data-t="snow">Hóesés</span><span id="snowLabel">Kitartó</span></label>
     <input type="range" id="snowRange" min="0" max="1" step="0.01" value="0.5">
+    <label class="toggle" for="snowAutoToggle" style="margin-top:2px;">
+      <input type="checkbox" id="snowAutoToggle"> <span data-t="snowAutoCycle">Auto ciklus</span>
+    </label>
+    <div id="snowAutoSpeedCtl" style="display:none;">
+      <label for="snowAutoSpeedRange" style="font-size:10px;opacity:.8;display:flex;justify-content:space-between;margin-top:4px;">
+        <span data-t="snowCycleSpeed">Ciklus seb.</span><span id="snowAutoSpeedLabel">1.0×</span>
+      </label>
+      <input type="range" id="snowAutoSpeedRange" min="0.2" max="4" step="0.1" value="1">
+    </div>
   </div>
 
   <div class="ctl">
@@ -215,6 +211,19 @@
       <button data-w="calm" data-t="windCalm">Szélcsend</button>
       <button data-w="breezy" class="on" data-t="windBreezy">Szellő</button>
       <button data-w="stormy" data-t="windStormy">Viharos</button>
+    </div>
+
+    <div class="lbl" style="margin-top:6px;">
+      <span id="windDirTitle" data-t="windDir">Szélirány</span>
+      <span id="windDirLabel" style="opacity:.7">↔</span>
+      <label class="toggle" for="windDirAuto"><input type="checkbox" id="windDirAuto" checked> <span data-t="auto">Auto</span></label>
+    </div>
+    <input type="range" id="windDirRange" aria-labelledby="windDirTitle" min="-1" max="1" step="0.01" value="1">
+    <div id="windDirSpeedCtl">
+      <label for="windDirSpeedRange" style="font-size:10px;opacity:.8;display:flex;justify-content:space-between;margin-top:4px;">
+        <span data-t="windDirSpeed">Irányváltás seb.</span><span id="windDirSpeedLabel">1.0×</span>
+      </label>
+      <input type="range" id="windDirSpeedRange" min="0.2" max="4" step="0.1" value="1">
     </div>
   </div>
 
@@ -252,19 +261,15 @@
 (function () {
 'use strict';
 
-/* ============================== utilities ============================== */
-
 const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
 const lerp = (a, b, f) => a + (b - a) * f;
 const smooth = f => f * f * (3 - 2 * f);
-// triple smoothstep for ~250% softer, nearly imperceptible transitions across phases
 const ultraSmooth = f => {
   let t = clamp(f, 0, 1);
   t = smooth(t);
   t = smooth(t);
   return smooth(t);
 };
-// smooth bell curve centered at centerU (with wraparound on [0, 1))
 function circularBell(u, centerU, halfWidth) {
   let d = Math.abs(((u - centerU + 0.5) % 1 + 1) % 1 - 0.5);
   if (d >= halfWidth) return 0;
@@ -279,9 +284,11 @@ const I18N = {
     controls: 'vezérlők', language: 'Nyelv',
     series: 'Fotósorozat', series1: 'Séria 1', series2: 'Séria 2', series3: 'Séria 3', series4: 'Séria 4',
     snow: 'Hóesés', snowLevels: ['Szállingózás', 'Kitartó', 'Sűrű', 'Hóvihar'],
+    snowAutoCycle: 'Auto ciklus', snowCycleSpeed: 'Ciklus seb.',
     time: 'Napszak', auto: 'Auto', speed: 'Sebesség',
     phases: ['Napkelte', 'Dél', 'Délután', 'Este', 'Hold'],
     wind: 'Szél', windCalm: 'Szélcsend', windBreezy: 'Szellő', windStormy: 'Viharos',
+    windDir: 'Szélirány', windDirSpeed: 'Irányváltás seb.',
     sound: 'Hang', on: 'Be',
     audWind: 'Szél', audFire: 'Tűz', audPad: 'Háttér',
     hint: 'A napszak csúszka a fotók — napkelte, dél, délután, este, hold — között úszik át.'
@@ -291,9 +298,11 @@ const I18N = {
     controls: 'controls', language: 'Language',
     series: 'Photo series', series1: 'Series 1', series2: 'Series 2', series3: 'Series 3', series4: 'Series 4',
     snow: 'Snowfall', snowLevels: ['Light flurry', 'Steady', 'Heavy', 'Snowstorm'],
+    snowAutoCycle: 'Auto cycle', snowCycleSpeed: 'Cycle speed',
     time: 'Time of day', auto: 'Auto', speed: 'Speed',
     phases: ['Sunrise', 'Noon', 'Afternoon', 'Evening', 'Moon'],
     wind: 'Wind', windCalm: 'Calm', windBreezy: 'Breezy', windStormy: 'Stormy',
+    windDir: 'Wind direction', windDirSpeed: 'Direction speed',
     sound: 'Sound', on: 'On',
     audWind: 'Wind', audFire: 'Fire', audPad: 'Ambience',
     hint: 'The time-of-day slider crossfades between the photos — sunrise, noon, afternoon, evening, moon.'
@@ -303,9 +312,11 @@ const I18N = {
     controls: 'comenzi', language: 'Limbă',
     series: 'Serie foto', series1: 'Seria 1', series2: 'Seria 2', series3: 'Seria 3', series4: 'Seria 4',
     snow: 'Ninsoare', snowLevels: ['Fulgi rari', 'Constantă', 'Deasă', 'Viscol'],
+    snowAutoCycle: 'Ciclu automat', snowCycleSpeed: 'Viteza ciclului',
     time: 'Momentul zilei', auto: 'Auto', speed: 'Viteză',
     phases: ['Răsărit', 'Amiază', 'După-amiază', 'Seară', 'Lună'],
     wind: 'Vânt', windCalm: 'Calm', windBreezy: 'Briză', windStormy: 'Furtunos',
+    windDir: 'Direcția vântului', windDirSpeed: 'Viteza direcției',
     sound: 'Sunet', on: 'Pornit',
     audWind: 'Vânt', audFire: 'Foc', audPad: 'Ambianță',
     hint: 'Cursorul pentru momentul zilei trece lin între fotografii — răsărit, amiază, după-amiază, seară, lună.'
@@ -315,9 +326,11 @@ const I18N = {
     controls: 'Regler', language: 'Sprache',
     series: 'Fotoserie', series1: 'Serie 1', series2: 'Serie 2', series3: 'Serie 3', series4: 'Serie 4',
     snow: 'Schneefall', snowLevels: ['Leichtes Rieseln', 'Stetig', 'Dicht', 'Schneesturm'],
+    snowAutoCycle: 'Auto-Zyklus', snowCycleSpeed: 'Zyklusgeschw.',
     time: 'Tageszeit', auto: 'Auto', speed: 'Tempo',
     phases: ['Sonnenaufgang', 'Mittag', 'Nachmittag', 'Abend', 'Mond'],
     wind: 'Wind', windCalm: 'Windstill', windBreezy: 'Brise', windStormy: 'Stürmisch',
+    windDir: 'Windrichtung', windDirSpeed: 'Richtungsgeschw.',
     sound: 'Ton', on: 'An',
     audWind: 'Wind', audFire: 'Feuer', audPad: 'Ambiente',
     hint: 'Der Tageszeit-Regler blendet sanft zwischen den Fotos über — Sonnenaufgang, Mittag, Nachmittag, Abend, Mond.'
@@ -342,10 +355,7 @@ const photos = SETS.map(set => set.map(src => {
 }));
 let photosReady = false;
 Promise.all(photos.flat().map(im => im.decode ? im.decode().catch(() => {}) : Promise.resolve()))
-  .then(() => {
-    photosReady = true;
-    needsRender = true;
-  });
+  .then(() => { photosReady = true; needsRender = true; });
 
 /* ============================== state ============================== */
 
@@ -355,31 +365,40 @@ let W = 0, H = 0, dpr = 1, isMobile = false;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let simT = 0;
-let cycleT = 0;                     // 0 sunrise -> ... -> evening -> moon -> 1.0 sunrise
+let cycleT = 0;
 let autoCycle = true;
 const CYCLE_SECONDS = 90;
-let cycleSpeed = 1;                 // 0.2x ... 4x — time-of-day cycle rate
+let cycleSpeed = 1;
 
 let intensity = 0.5;
 let windMode = 'breezy';
+
+/* snow auto cycle */
+let snowAuto = false;
+let snowAutoSpeed = 1;
+let snowPhase = 0;
+
+/* wind direction */
+let windDirManual = 1;
+let windDirOsc = 1;
+let windDirAuto = true;
+let windDirSpeed = 1;
+let windDirPhase = Math.PI / 2;   // start at +1 (right)
 
 // wind / gusts
 let wind = 0, gustEnv = 0, gustDir = 1, gustAmp = 1;
 let gustState = 'idle', gustClock = 0, nextGust = 6;
 const WIND_CFG = { calm: { base: 0.02, gust: 0.30 }, breezy: { base: 0.14, gust: 0.62 }, stormy: { base: 0.40, gust: 1.05 } };
 
-/* wide, ultra-smooth crossfade across all 5 frames in each series */
 function photoBlend(u) {
   u = ((u % 1) + 1) % 1;
   const count = SETS[0].length;
   const p = u * count;
   const i = Math.floor(p) % count, j = (i + 1) % count;
   const f = p - Math.floor(p);
-  // start blending at 0.25 across 0.75 of each phase (~250% wider blend band) + triple smoothstep
   const fade = f < 0.25 ? 0 : ultraSmooth((f - 0.25) / 0.75);
   return { i, j, fade };
 }
-/* how "night" the view is — este (index 3) and hold (index 4) drive flake glow and ambience */
 function nightAmount(u) {
   const b = photoBlend(u);
   let n = 0;
@@ -387,7 +406,6 @@ function nightAmount(u) {
   if (b.j === 3 || b.j === 4) n += b.fade;
   return clamp(n, 0, 1);
 }
-/* weight of the moon phase (hold image index 4) — drives the 50% darkening */
 function moonAmount(u) {
   const b = photoBlend(u);
   let m = 0;
@@ -395,25 +413,16 @@ function moonAmount(u) {
   if (b.j === 4) m += b.fade;
   return clamp(m, 0, 1);
 }
-/* continuous, ultra-smooth lighting curve around the full 0..1 day cycle:
-   - morning lift peaks gently as day opens and eases smoothly toward noon
-   - evening darkening is 25% darker than the previous baseline (0.164 vs 0.131) */
 function cycleLightAdjustment(u) {
   u = ((u % 1) + 1) % 1;
   const morningLift = circularBell(u, 0.10, 0.20);
-  // evening bell centered around este (index 3 -> ~0.70 of 5-frame cycle)
   const eveningBell = circularBell(u, 0.70, 0.24);
   const deepNightCore = circularBell(u, 0.70, 0.14);
-  return {
-    brighten: morningLift,
-    darken: eveningBell,
-    deepNight: deepNightCore
-  };
+  return { brighten: morningLift, darken: eveningBell, deepNight: deepNightCore };
 }
 
-/* ============================== snowflakes (flat typed arrays) ============================== */
+/* ============================== snowflakes ============================== */
 
-// up to 4x baseline count (original + 300% more) at maximum slider value
 const MAXF = 3600;
 const fx = new Float32Array(MAXF), fy = new Float32Array(MAXF), fs = new Float32Array(MAXF),
       fv = new Float32Array(MAXF), fp = new Float32Array(MAXF), fa = new Float32Array(MAXF),
@@ -421,7 +430,7 @@ const fx = new Float32Array(MAXF), fy = new Float32Array(MAXF), fs = new Float32
 const fl = new Uint8Array(MAXF);
 let activeFlakes = 0;
 
-// More smaller flakes, 30% fewer medium and 20% fewer large flakes (denser, finer snowfall)
+// Finer snowfall: 30% fewer medium, 20% fewer large flakes.
 const FLAYER = [
   { s: [0.8, 1.35], v: [16, 30],  amp: [2, 6],   al: [0.35, 0.58], freq: 0.7 },
   { s: [1.6, 2.5],  v: [40, 68],  amp: [7, 16],  al: [0.52, 0.78], freq: 0.9 },
@@ -429,7 +438,7 @@ const FLAYER = [
 ];
 function spawnFlake(i, anywhere) {
   const r = Math.random();
-  // 0.66 tiny, 0.245 medium (-30%), 0.095 large (-20%) — more tiny flakes overall
+  // 0.66 tiny, 0.245 medium (−30%), 0.095 large (−20%)
   const L = r < 0.66 ? 0 : (r < 0.905 ? 1 : 2);
   const P = FLAYER[L];
   fl[i] = L;
@@ -443,7 +452,6 @@ function spawnFlake(i, anywhere) {
 }
 function targetFlakeCount() {
   if (reduceMotion) return 0;
-  // more flakes overall with higher share of smaller flakes
   const boostMult = 1 + intensity * 3.2;
   const n = Math.round((180 + intensity * 680) * boostMult);
   return Math.min(MAXF, Math.round(n * (isMobile ? 0.5 : 1)));
@@ -453,7 +461,7 @@ function setActiveFlakes(n) {
   activeFlakes = n;
 }
 
-/* ============================== soft sprite for the gust veil ============================== */
+/* ============================== soft sprite ============================== */
 
 let softSprite = null;
 function makeSoftSprite() {
@@ -478,7 +486,6 @@ function resize() {
   canvas.style.width = W + 'px';
   canvas.style.height = H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  // crisp photo upscaling — the default 'low' filtering blurs the picture
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   softSprite = makeSoftSprite();
@@ -511,17 +518,38 @@ function updateWind(dt) {
   wind += (target - wind) * Math.min(1, dt * 3);
 }
 
-/* ============================== audio (fully procedural, Web Audio API) ============================== */
+/* Wind direction — manual or auto-oscillating */
+function updateWindDir(dt) {
+  if (windDirAuto) {
+    windDirPhase += dt * windDirSpeed * 0.15;
+    windDirOsc = Math.sin(windDirPhase);
+    if (windDirRange) windDirRange.value = windDirOsc.toFixed(3);
+  } else {
+    windDirOsc = windDirManual;
+  }
+  if (windDirLabel) {
+    if (windDirAuto) windDirLabel.textContent = '↔';
+    else if (windDirOsc > 0.3) windDirLabel.textContent = '→';
+    else if (windDirOsc < -0.3) windDirLabel.textContent = '←';
+    else windDirLabel.textContent = '·';
+  }
+}
+
+/* Snow auto cycle — smoothly between szállingózás (0) and hóvihar (1) */
+function updateSnowAuto(dt) {
+  if (!snowAuto) return;
+  snowPhase += dt * snowAutoSpeed * 0.15;
+  intensity = clamp((Math.sin(snowPhase) + 1) / 2, 0, 1);
+  snowRange.value = intensity.toFixed(3);
+  updateSnowLabel();
+}
+
+/* ============================== audio ============================== */
 
 const audio = {
-  on: false,
-  vol: 0.6,
-  wind: true,
-  fire: true,
-  pad: true,
-  windLevel: 0.7,
-  fireLevel: 0.7,
-  padLevel: 0.7
+  on: false, vol: 0.6,
+  wind: true, fire: true, pad: true,
+  windLevel: 0.7, fireLevel: 0.7, padLevel: 0.7
 };
 let AC = null, AN = null, nextCrackle = 0;
 
@@ -532,7 +560,7 @@ function makeNoiseBuffer(seconds) {
   let last = 0;
   for (let i = 0; i < len; i++) {
     const w = Math.random() * 2 - 1;
-    last = (last + 0.02 * w) / 1.02;   // pink-ish: white softened toward low end
+    last = (last + 0.02 * w) / 1.02;
     d[i] = (w * 0.4 + last * 6) * 0.35;
   }
   return buf;
@@ -550,7 +578,6 @@ function initAudio() {
   master.gain.value = 0;
   master.connect(AC.destination);
 
-  // wind: looped noise through a swept band-pass — the classic howl
   const windSrc = AC.createBufferSource();
   windSrc.buffer = noise; windSrc.loop = true;
   const windBp = AC.createBiquadFilter();
@@ -559,7 +586,6 @@ function initAudio() {
   windSrc.connect(windBp); windBp.connect(windGain); windGain.connect(master);
   windSrc.start();
 
-  // gust hiss: same noise, high-passed, only audible during gusts
   const hissSrc = AC.createBufferSource();
   hissSrc.buffer = noise; hissSrc.loop = true; hissSrc.playbackRate.value = 1.31;
   const hissHp = AC.createBiquadFilter();
@@ -568,7 +594,6 @@ function initAudio() {
   hissSrc.connect(hissHp); hissHp.connect(hissGain); hissGain.connect(master);
   hissSrc.start();
 
-  // fireplace: high-passed noise whose gain snaps up in tiny random crackles
   const fireSrc = AC.createBufferSource();
   fireSrc.buffer = noise; fireSrc.loop = true; fireSrc.playbackRate.value = 0.83;
   const fireHp = AC.createBiquadFilter();
@@ -581,7 +606,6 @@ function initAudio() {
   fireLp.type = 'lowpass'; fireLp.frequency.value = 900;
   fireSrc.connect(fireLp); fireLp.connect(fireBed); fireBed.connect(master);
 
-  // ambience: a very quiet detuned warm chord that breathes
   const padGain = AC.createGain(); padGain.gain.value = 0;
   padGain.connect(master);
   const padLp = AC.createBiquadFilter();
@@ -643,7 +667,6 @@ function stepAudio() {
 
 /* ============================== drawing ============================== */
 
-/* cover-fit draw, like CSS background-size: cover */
 function drawCover(im, alpha) {
   if (!im.naturalWidth) return;
   const sc = Math.max(W / im.naturalWidth, H / im.naturalHeight);
@@ -654,13 +677,11 @@ function drawCover(im, alpha) {
 }
 
 function drawFlakes(night) {
-  /* balanced evening glow boost so flakes stay crisp in night without over-glowing */
   const boost = 1 + night * 0.28;
   ctx.fillStyle = '#ffffff';
   for (let i = 0; i < activeFlakes; i++) {
     const L = fl[i];
     if (L === 2 && softSprite) {
-      // softSprite reaches 0 alpha at radius 0.5*d; 2.2*fs gives a visible core matching radius fs[i]
       const d = fs[i] * 2.2;
       ctx.globalAlpha = Math.min(1, fo[i] * (1 + night * 0.18));
       ctx.drawImage(softSprite, fx[i] - d / 2, fy[i] - d / 2, d, d);
@@ -688,7 +709,6 @@ function draw() {
   const moon = moonAmount(cycleT);
   const adj = cycleLightAdjustment(cycleT);
 
-  /* smooth morning lift */
   if (adj.brighten > 0.001) {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
@@ -697,7 +717,7 @@ function draw() {
     ctx.restore();
   }
 
-  /* evening darkening — 25% darker than the previous baseline (0.164 vs 0.131) */
+  /* Evening darkening — 25% darker than previous baseline (0.164 vs 0.131) */
   if (adj.darken > 0.001) {
     ctx.fillStyle = `rgba(5, 9, 23, ${Math.min(0.28, 0.164 * adj.darken)})`;
     ctx.fillRect(0, 0, W, H);
@@ -710,24 +730,25 @@ function draw() {
     ctx.restore();
   }
 
-  /* moon phase darkened by exactly 50% — simple black overlay preserves the
-     moon already present inside the *-hold.jpg image without doubling it */
+  /* Moon phase darkened by exactly 50% — simple black overlay preserves the
+     moon already present inside the *-hold.jpg image without doubling it. */
   if (moon > 0.001) {
     ctx.fillStyle = `rgba(0, 0, 0, ${0.50 * moon})`;
     ctx.fillRect(0, 0, W, H);
   }
 
-  /* blowing-snow veil during gusts — kept subtle in evening so flakes stand out */
+  /* Blowing-snow veil during gusts — direction follows effective wind */
   if (gustEnv > 0.08 && softSprite) {
+    const veilSign = Math.sign(windDirOsc * 0.55 + wind * 0.35) || 1;
     const va = gustEnv * (0.10 + intensity * 0.12) * (1 - 0.25 * adj.darken);
     for (let k = 0; k < 4; k++) {
       const vy = H * (0.72 + k * 0.06);
-      const speed = (170 + k * 90) * gustDir;
+      const speed = (170 + k * 90) * veilSign;
       let vx = ((simT * speed) % (W + 460)) - 230;
       if (vx < -230) vx += W + 460;
       ctx.globalAlpha = Math.max(0, va * (1 - k * 0.15));
       ctx.drawImage(softSprite, vx - 210, vy - 16, 420, 32);
-      ctx.drawImage(softSprite, vx - 210 - (W + 460) * gustDir, vy - 16, 420, 32);
+      ctx.drawImage(softSprite, vx - 210 - (W + 460) * veilSign, vy - 16, 420, 32);
     }
     ctx.globalAlpha = 1;
   }
@@ -745,13 +766,19 @@ function step(dt) {
     updatePhaseLabel();
   }
   updateWind(dt);
+  updateWindDir(dt);
+  updateSnowAuto(dt);
 
   const speedMul = 0.8 + intensity * 0.9;
+  const dirPush = windDirOsc * 0.55;
+  const gustPush = wind * 0.35;
+  const effWind = dirPush + gustPush;
+
   for (let i = 0; i < activeFlakes; i++) {
     const L = fl[i], P = FLAYER[L];
     const sway = Math.sin(simT * P.freq + fp[i]) * fa[i];
     fy[i] += fv[i] * speedMul * dt;
-    fx[i] += (sway + wind * (18 + fs[i] * 24)) * dt;
+    fx[i] += (sway + effWind * (18 + fs[i] * 24)) * dt;
     if (fx[i] > W + 40) fx[i] -= W + 80;
     else if (fx[i] < -40) fx[i] += W + 80;
     if (fy[i] > H + 10) spawnFlake(i, false);
@@ -790,10 +817,20 @@ function frame(now) {
 
 const snowRange = document.getElementById('snowRange');
 const snowLabel = document.getElementById('snowLabel');
+const snowAutoToggle = document.getElementById('snowAutoToggle');
+const snowAutoSpeedCtl = document.getElementById('snowAutoSpeedCtl');
+const snowAutoSpeedRange = document.getElementById('snowAutoSpeedRange');
+const snowAutoSpeedLabel = document.getElementById('snowAutoSpeedLabel');
 const timeRange = document.getElementById('timeRange');
 const phaseLabel = document.getElementById('phaseLabel');
 const autoTime = document.getElementById('autoTime');
 const windSeg = document.getElementById('windSeg');
+const windDirRange = document.getElementById('windDirRange');
+const windDirLabel = document.getElementById('windDirLabel');
+const windDirAutoCheck = document.getElementById('windDirAuto');
+const windDirSpeedCtl = document.getElementById('windDirSpeedCtl');
+const windDirSpeedRange = document.getElementById('windDirSpeedRange');
+const windDirSpeedLabel = document.getElementById('windDirSpeedLabel');
 const setSeg = document.getElementById('setSeg');
 const chSliders = document.getElementById('chSliders');
 const windVolRange = document.getElementById('windVolRange');
@@ -867,12 +904,34 @@ openBtn.addEventListener('click', () => {
   panel.classList.remove('closed');
   openBtn.classList.remove('show');
 });
+
+/* --- snow controls --- */
 snowRange.addEventListener('input', () => {
+  if (snowAuto) {
+    snowAuto = false;
+    snowAutoToggle.checked = false;
+    snowAutoSpeedCtl.style.display = 'none';
+  }
   intensity = parseFloat(snowRange.value);
   updateSnowLabel();
   setActiveFlakes(targetFlakeCount());
   needsRender = true;
 });
+snowAutoToggle.addEventListener('change', () => {
+  snowAuto = snowAutoToggle.checked;
+  snowAutoSpeedCtl.style.display = snowAuto ? 'block' : 'none';
+  if (snowAuto) {
+    // preserve current intensity by picking the corresponding phase
+    const sinVal = clamp(2 * intensity - 1, -1, 1);
+    snowPhase = Math.asin(sinVal);
+  }
+});
+snowAutoSpeedRange.addEventListener('input', () => {
+  snowAutoSpeed = parseFloat(snowAutoSpeedRange.value);
+  snowAutoSpeedLabel.textContent = snowAutoSpeed.toFixed(1) + '×';
+});
+
+/* --- time --- */
 timeRange.addEventListener('input', () => {
   cycleT = parseFloat(timeRange.value);
   if (autoCycle) { autoCycle = false; autoTime.checked = false; }
@@ -884,6 +943,8 @@ autoTime.addEventListener('change', () => {
   if (reduceMotion) autoTime.checked = false;
   needsRender = true;
 });
+
+/* --- wind mode --- */
 windSeg.addEventListener('click', e => {
   const btn = e.target.closest('button');
   if (!btn) return;
@@ -891,6 +952,39 @@ windSeg.addEventListener('click', e => {
   for (const x of windSeg.querySelectorAll('button')) x.classList.toggle('on', x === btn);
   needsRender = true;
 });
+
+/* --- wind direction --- */
+windDirRange.addEventListener('input', () => {
+  if (windDirAuto) {
+    windDirAuto = false;
+    windDirAutoCheck.checked = false;
+    windDirSpeedCtl.style.display = 'none';
+  }
+  windDirManual = parseFloat(windDirRange.value);
+  windDirOsc = windDirManual;
+  if (windDirOsc > 0.3) windDirLabel.textContent = '→';
+  else if (windDirOsc < -0.3) windDirLabel.textContent = '←';
+  else windDirLabel.textContent = '·';
+  needsRender = true;
+});
+windDirAutoCheck.addEventListener('change', () => {
+  windDirAuto = windDirAutoCheck.checked;
+  windDirSpeedCtl.style.display = windDirAuto ? 'block' : 'none';
+  if (windDirAuto) {
+    // start from current direction
+    windDirPhase = Math.asin(clamp(windDirManual, -1, 1));
+    if (windDirPhase < -Math.PI / 2) windDirPhase += Math.PI * 2;
+  } else {
+    windDirManual = windDirOsc;
+    windDirRange.value = windDirOsc.toFixed(3);
+  }
+});
+windDirSpeedRange.addEventListener('input', () => {
+  windDirSpeed = parseFloat(windDirSpeedRange.value);
+  windDirSpeedLabel.textContent = windDirSpeed.toFixed(1) + '×';
+});
+
+/* --- sound --- */
 soundOn.addEventListener('change', () => {
   audio.on = soundOn.checked;
   if (audio.on) initAudio();
@@ -933,17 +1027,23 @@ handle.addEventListener('click', () => panel.classList.toggle('open'));
 if (reduceMotion) {
   autoCycle = false;
   autoTime.checked = false;
-  cycleT = 0.70;                 // evening: warm lit windows, calm base frame
+  cycleT = 0.70;
   timeRange.value = '0.70';
 }
 let saved = null;
 try { saved = localStorage.getItem('wc-lang'); } catch (e) { /* private mode */ }
-if (saved === 'ge') saved = 'de';          // the button used to be labelled GE
+if (saved === 'ge') saved = 'de';
 if (!I18N[saved]) {
   const nav = (navigator.language || 'hu').slice(0, 2).toLowerCase();
   saved = I18N[nav] ? nav : 'hu';
 }
 applyLang(saved);
+
+/* initial visibility of the speed sliders */
+windDirSpeedCtl.style.display = windDirAuto ? 'block' : 'none';
+snowAutoSpeedCtl.style.display = snowAuto ? 'block' : 'none';
+windDirSpeedLabel.textContent = windDirSpeed.toFixed(1) + '×';
+snowAutoSpeedLabel.textContent = snowAutoSpeed.toFixed(1) + '×';
 
 resize();
 window.addEventListener('resize', resize);
