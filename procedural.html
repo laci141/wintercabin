@@ -64,8 +64,11 @@
       padding: 0 16px 12px;
       transform: translateY(calc(100% - 42px));
       transition: transform .35s cubic-bezier(.4, 0, .2, 1);
-      max-height: 72vh;
+      max-height: min(72vh, 720px);
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
     }
+    @supports (height: 1dvh) { .glass-panel { max-height: min(72dvh, 720px); } }
     .glass-panel.open { transform: none; overflow-y: auto; }
     #handle {
       display: block; width: 100%; background: none; border: none; color: #eef3fb;
@@ -76,6 +79,16 @@
     .glass-panel.open #handle::after { content: " ▾"; }
     .glass-panel h1 { display: none; }
   }
+
+  /* Cross-browser touch, scroll and focus behaviour */
+  button, input { -webkit-tap-highlight-color: transparent; }
+  button { touch-action: manipulation; }
+  .glass-panel { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .glass-panel button[aria-pressed="true"] { box-shadow: inset 0 0 0 1px rgba(255,212,142,.18); }
+  @media (prefers-reduced-motion: reduce) {
+    .glass-panel, .glass-panel *, #fade { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  }
+
 </style>
 </head>
 <body>
@@ -96,7 +109,7 @@
   </div>
 
   <div class="ctl">
-    <label for="snowRange"><span>Snowfall</span><span id="snowLabel">Steady</span></label>
+    <label for="snowRange"><span>Snowfall</span><span id="snowLabel" aria-live="polite">Steady</span></label>
     <input type="range" id="snowRange" min="0" max="1" step="0.01" value="0.5">
   </div>
 
@@ -110,9 +123,9 @@
   <div class="ctl">
     <label><span>Wind</span></label>
     <div class="seg" id="windSeg">
-      <button type="button" data-w="calm">Calm</button>
-      <button type="button" data-w="breezy" class="on">Breezy</button>
-      <button type="button" data-w="stormy">Stormy</button>
+      <button type="button" data-w="calm" aria-pressed="false">Calm</button>
+      <button type="button" data-w="breezy" class="on" aria-pressed="true">Breezy</button>
+      <button type="button" data-w="stormy" aria-pressed="false">Stormy</button>
     </div>
   </div>
 
@@ -122,9 +135,9 @@
     </label>
     <input type="range" id="volRange" min="0" max="1" step="0.01" value="0.6">
     <div class="seg stack" id="audSeg">
-      <button type="button" data-a="wind" class="on">Wind</button>
-      <button type="button" data-a="fire" class="on">Fire</button>
-      <button type="button" data-a="pad" class="on">Ambience</button>
+      <button type="button" data-a="wind" class="on" aria-pressed="true">Wind</button>
+      <button type="button" data-a="fire" class="on" aria-pressed="true">Fire</button>
+      <button type="button" data-a="pad" class="on" aria-pressed="true">Ambience</button>
     </div>
   </div>
 
@@ -216,7 +229,7 @@ function paintSpruce(g, cx, baseY, h, seed, hazeF, L, accum, frost, litDir) {
   const topY = baseY - h;
   const maxR = h * 0.27;
   const lit = litDir || (Math.sign(SUNX - cx) || 1);
-  const nL = isMobile ? 16 : 26;
+  const nL = isMobile ? 19 : 32;
   const acc = accum === undefined ? 1 : clamp(accum, 0, 1);
   // trunk showing between the lowest branches
   const tw = Math.max(2.5, h * 0.022);
@@ -660,6 +673,11 @@ function renderMountains() {
   const nNear = Math.max(8, Math.round(W / (rocky ? 150 : 120)));
   const aFar = Math.min(H * (0.175 + rocky * 0.06), W * 0.14);
   const aNear = Math.min(H * (0.125 + rocky * 0.05), W * 0.11);
+  // A pale, distant ridge adds another atmospheric depth plane behind the main peaks.
+  drawRidge(g, ridgePoints(2468, H * (0.495 - rocky * 0.01), aFar * 0.72, nFar + 3), {
+    fill: rocky ? '#aab6d0' : '#b2bdd7', cap: 0.24,
+    snow: 0.38, drop: aFar * 0.24, facet: 0.025
+  });
   drawRidge(g, ridgePoints(1234, H * (0.545 - rocky * 0.02), aFar, nFar), {
     fill: rocky ? '#828cae' : '#8b93c0', cap: 0.5,
     snow: rocky ? 0.85 : 0.45, drop: aFar * (rocky ? 0.55 : 0.4), facet: rocky ? 0.10 : 0.05
@@ -1159,12 +1177,12 @@ function buildScene() {
   renderCabin();
   renderDrifts();
   buildReflection();
-  needsRender = true;
+  requestRender();
 }
 function resize() {
   W = window.innerWidth; H = window.innerHeight;
-  dpr = Math.min(2, window.devicePixelRatio || 1);
   isMobile = W < 700;
+  dpr = Math.min(isMobile ? 1.5 : 2, window.devicePixelRatio || 1);
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(H * dpr);
   canvas.style.width = W + 'px';
@@ -1235,7 +1253,7 @@ function makeNoiseBuffer(seconds) {
   return buf;
 }
 function initAudio() {
-  if (AC) { AC.resume(); return; }
+  if (AC) { if (AC.state === 'suspended') AC.resume().catch(() => {}); return; }
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) return;
   AC = new Ctx();
@@ -1366,7 +1384,7 @@ canvas.addEventListener('pointerdown', e => {
   if (!hit) return;
   if (hit.tree) shakeTree(hit.tree);
   else if (hit.roof) roofAvalanche();
-  needsRender = true;
+  requestRender();
 });
 canvas.addEventListener('pointermove', e => {
   canvas.style.cursor = hitTest(e.clientX, e.clientY) ? 'pointer' : 'default';
@@ -1397,7 +1415,8 @@ function step(dt) {
     const L = fl[i], P = FLAYER[L];
     const sway = Math.sin(simT * P.freq + fp[i]) * fa[i];
     fy[i] += fv[i] * speedMul * dt;
-    fx[i] += (sway + wind * (18 + fs[i] * 24)) * dt;
+    const depthDrift = L === 0 ? 0.55 : (L === 1 ? 0.85 : 1.25);
+    fx[i] += (sway + wind * (18 + fs[i] * 24) * depthDrift) * dt;
     if (fx[i] > W + 40) fx[i] -= W + 80;
     else if (fx[i] < -40) fx[i] += W + 80;
     if (fy[i] > surfaceY(fx[i]) - fs[i] * 0.5) {
@@ -1504,6 +1523,17 @@ function drawFlakes(layer) {
       const d = fs[i] * 3.2;
       ctx.globalAlpha = fo[i];
       ctx.drawImage(softSprite, fx[i] - d / 2, fy[i] - d / 2, d, d);
+      // Near flakes get a short wind-aligned streak during stronger gusts.
+      if (gustEnv > 0.30 && Math.abs(wind) > 0.12) {
+        const streak = Math.min(14, 3 + gustEnv * 10) * Math.sign(wind);
+        ctx.globalAlpha = Math.min(0.32, fo[i] * gustEnv * 0.36);
+        ctx.strokeStyle = '#edf4ff';
+        ctx.lineWidth = Math.max(0.8, fs[i] * 0.25);
+        ctx.beginPath();
+        ctx.moveTo(fx[i] - streak, fy[i] - fs[i] * 0.55);
+        ctx.lineTo(fx[i] + streak, fy[i] + fs[i] * 0.55);
+        ctx.stroke();
+      }
     }
   } else if (layer === 1) {
     ctx.beginPath();
@@ -1619,8 +1649,8 @@ function windowGlow(cyc) {
     const b = base * flick;
     avg += b;
     const gg = ctx.createLinearGradient(wn.x, wn.y, wn.x, wn.y + wn.h);
-    gg.addColorStop(0, rgb(mixC([190, 120, 55], [255, 216, 150], b)));
-    gg.addColorStop(1, rgb(mixC([160, 95, 40], [255, 180, 92], b)));
+    gg.addColorStop(0, rgb(mixC([198, 112, 42], [255, 232, 178], b)));
+    gg.addColorStop(1, rgb(mixC([168, 86, 34], [255, 188, 104], b)));
     ctx.fillStyle = gg;
     ctx.fillRect(wn.x, wn.y, wn.w, wn.h);
     ctx.strokeStyle = 'rgba(46,26,12,0.9)';
@@ -1630,9 +1660,9 @@ function windowGlow(cyc) {
     ctx.moveTo(wn.x, wn.y + wn.h / 2); ctx.lineTo(wn.x + wn.w, wn.y + wn.h / 2);
     ctx.stroke();
     ctx.globalCompositeOperation = 'screen';
-    const cxm = wn.x + wn.w / 2, cym = wn.y + wn.h / 2, r = wn.w * 2.4;
+    const cxm = wn.x + wn.w / 2, cym = wn.y + wn.h / 2, r = wn.w * 2.9;
     const hg = ctx.createRadialGradient(cxm, cym, 0, cxm, cym, r);
-    hg.addColorStop(0, `rgba(255,170,80,${0.30 * b * (0.35 + 0.65 * cyc.night)})`);
+    hg.addColorStop(0, `rgba(255,164,72,${0.38 * b * (0.35 + 0.65 * cyc.night)})`);
     hg.addColorStop(1, 'rgba(255,170,80,0)');
     ctx.fillStyle = hg;
     ctx.fillRect(cxm - r, cym - r, r * 2, r * 2);
@@ -1647,7 +1677,7 @@ function windowGlow(cyc) {
     if (wn.y > cb.bodyTop + cb.bh) continue;
     const wx = wn.x + wn.w / 2;
     const wr = 88 * s * (1 + 0.35 * cyc.night);
-    const wa = (0.10 + 0.34 * cyc.night) * avg;
+    const wa = (0.13 + 0.40 * cyc.night) * avg;
     const wg = ctx.createRadialGradient(wx, py, 0, wx, py, wr);
     wg.addColorStop(0, `rgba(255,181,96,${wa})`);
     wg.addColorStop(1, 'rgba(255,170,90,0)');
@@ -1662,7 +1692,7 @@ function windowGlow(cyc) {
   }
   const px = cb.cx;
   const rx = 215 * s * (1 + 0.32 * cyc.night);
-  const pa = (0.12 + 0.62 * cyc.night) * avg;
+  const pa = (0.15 + 0.68 * cyc.night) * avg;
   const pg = ctx.createRadialGradient(px, py, 0, px, py, rx);
   pg.addColorStop(0, `rgba(255,186,104,${pa})`);
   pg.addColorStop(0.45, `rgba(255,172,92,${pa * 0.5})`);
@@ -1910,24 +1940,57 @@ function draw() {
 /* ============================== main loop ============================== */
 
 let needsRender = true, lastT = 0;
+let frameRequestId = 0;
+let pageActive = !document.hidden;
+function scheduleFrame() {
+  if (!pageActive || frameRequestId) return;
+  frameRequestId = requestAnimationFrame(frame);
+}
+function requestRender() {
+  needsRender = true;
+  scheduleFrame();
+}
 function frame(now) {
-  requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (now - lastT) / 1000 || 0.016);
+  frameRequestId = 0;
+  if (!pageActive) return;
+  const dt = Math.min(0.05, lastT ? (now - lastT) / 1000 : 1 / 60);
   lastT = now;
   if (reduceMotion) {
     updateAudio();
-    if (!needsRender) return;
+    if (!needsRender && renderedOnce) return;
     needsRender = false;
     draw();
   } else {
     step(dt);
     draw();
+    scheduleFrame();
   }
   if (!renderedOnce) {
     renderedOnce = true;
-    requestAnimationFrame(() => fadeEl.classList.add('gone'));
+    requestAnimationFrame(() => { if (pageActive) fadeEl.classList.add('gone'); });
   }
 }
+function pausePageWork() {
+  pageActive = false;
+  if (frameRequestId) cancelAnimationFrame(frameRequestId);
+  frameRequestId = 0;
+  lastT = 0;
+  if (AC && AC.state === 'running') AC.suspend().catch(() => {});
+}
+function resumePageWork() {
+  pageActive = !document.hidden;
+  lastT = 0;
+  if (!pageActive) return;
+  if (audio.on && AC && AC.state === 'suspended') AC.resume().then(updateAudio).catch(() => {});
+  requestRender();
+  if (!reduceMotion) scheduleFrame();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pausePageWork();
+  else resumePageWork();
+});
+window.addEventListener('pagehide', pausePageWork);
+window.addEventListener('pageshow', resumePageWork);
 
 /* ============================== controls ============================== */
 
@@ -1945,38 +2008,54 @@ const panel = document.getElementById('panel');
 const handle = document.getElementById('handle');
 const fadeEl = document.getElementById('fade');
 
+function syncPressedButtons(container, selector, isPressed) {
+  for (const button of container.querySelectorAll(selector)) {
+    button.setAttribute('aria-pressed', String(!!isPressed(button)));
+  }
+}
+
+let sceneSwitchTimer = 0;
+let pendingSceneIdx = sceneIdx;
 sceneSeg.addEventListener('click', e => {
   const b = e.target.closest('button');
-  if (!b || +b.dataset.s === sceneIdx) return;
-  for (const btn of sceneSeg.querySelectorAll('button')) btn.classList.toggle('on', btn === b);
+  if (!b) return;
+  const requestedScene = Number(b.dataset.s);
+  if (!Number.isInteger(requestedScene) || requestedScene < 0 || requestedScene >= SCENES.length || requestedScene === pendingSceneIdx) return;
+  pendingSceneIdx = requestedScene;
+  for (const btn of sceneSeg.querySelectorAll('button')) btn.classList.toggle('on', Number(btn.dataset.s) === requestedScene);
+  syncPressedButtons(sceneSeg, 'button', btn => Number(btn.dataset.s) === requestedScene);
   fadeEl.classList.add('switching');
-  setTimeout(() => {
-    sceneIdx = +b.dataset.s;
+  window.clearTimeout(sceneSwitchTimer);
+  sceneSwitchTimer = window.setTimeout(() => {
+    sceneIdx = pendingSceneIdx;
     buildScene();
     fadeEl.classList.remove('switching');
+    requestRender();
   }, 300);
 });
 snowRange.addEventListener('input', () => {
   intensity = parseFloat(snowRange.value);
   snowLabel.textContent = intensity < 0.2 ? 'Light flurry' : intensity < 0.6 ? 'Steady' : intensity < 0.85 ? 'Heavy' : 'Snowstorm';
   setActiveFlakes(targetFlakeCount());
-  needsRender = true;
+  requestRender();
 });
 timeRange.addEventListener('input', () => {
   cycleT = parseFloat(timeRange.value);
   if (autoCycle) { autoCycle = false; autoTime.checked = false; }
-  needsRender = true;
+  requestRender();
 });
 autoTime.addEventListener('change', () => {
   autoCycle = autoTime.checked && !reduceMotion;
   if (reduceMotion) autoTime.checked = false;
-  needsRender = true;
+  requestRender();
 });
 windSeg.addEventListener('click', e => {
   const b = e.target.closest('button');
   if (!b) return;
   windMode = b.dataset.w;
   for (const btn of windSeg.querySelectorAll('button')) btn.classList.toggle('on', btn === b);
+  syncPressedButtons(windSeg, 'button', btn => btn === b);
+  requestRender();
 });
 soundOn.addEventListener('change', () => {
   audio.on = soundOn.checked;
@@ -1992,6 +2071,7 @@ audSeg.addEventListener('click', e => {
   if (!b) return;
   audio[b.dataset.a] = !audio[b.dataset.a];
   b.classList.toggle('on', audio[b.dataset.a]);
+  b.setAttribute('aria-pressed', String(audio[b.dataset.a]));
   updateAudio();
 });
 resetBtn.addEventListener('click', () => {
@@ -2000,7 +2080,7 @@ resetBtn.addEventListener('click', () => {
     for (const tr of trees) { tr.accum = 0.2; renderTreeSprite(tr); }
     accumPx.fill(0);
     renderCabin(); renderDrifts(); buildReflection();
-    needsRender = true;
+    requestRender();
   } else {
     melting = true;
   }
@@ -2009,6 +2089,9 @@ handle.addEventListener('click', () => {
   const isOpen = panel.classList.toggle('open');
   handle.setAttribute('aria-expanded', String(isOpen));
 });
+syncPressedButtons(sceneSeg, 'button', b => Number(b.dataset.s) === sceneIdx);
+syncPressedButtons(windSeg, 'button', b => b.dataset.w === windMode);
+syncPressedButtons(audSeg, 'button', b => !!audio[b.dataset.a]);
 
 /* ============================== boot ============================== */
 
@@ -2031,8 +2114,9 @@ if (reduceMotion) {
   }
   simT = 2;
 }
-window.addEventListener('resize', resize);
-requestAnimationFrame(frame);
+window.addEventListener('resize', resize, { passive: true });
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize, { passive: true });
+requestRender();
 
 })();
 </script>
