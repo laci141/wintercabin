@@ -387,7 +387,7 @@ function nightAmount(u) {
   if (b.j === 3 || b.j === 4) n += b.fade;
   return clamp(n, 0, 1);
 }
-/* weight of the moon phase (hold image index 4), darkened by 50% */
+/* weight of the moon phase (hold image index 4) — drives the 50% darkening */
 function moonAmount(u) {
   const b = photoBlend(u);
   let m = 0;
@@ -397,7 +397,7 @@ function moonAmount(u) {
 }
 /* continuous, ultra-smooth lighting curve around the full 0..1 day cycle:
    - morning lift peaks gently as day opens and eases smoothly toward noon
-   - evening darkening is 25% darker than the previous baseline (0.164 * eveningBell) */
+   - evening darkening is 25% darker than the previous baseline (0.164 vs 0.131) */
 function cycleLightAdjustment(u) {
   u = ((u % 1) + 1) % 1;
   const morningLift = circularBell(u, 0.10, 0.20);
@@ -421,7 +421,7 @@ const fx = new Float32Array(MAXF), fy = new Float32Array(MAXF), fs = new Float32
 const fl = new Uint8Array(MAXF);
 let activeFlakes = 0;
 
-// More smaller flakes, 40% fewer large flakes (layer 2 weight reduced from 0.20 to 0.12)
+// More smaller flakes, 30% fewer medium and 20% fewer large flakes (denser, finer snowfall)
 const FLAYER = [
   { s: [0.8, 1.35], v: [16, 30],  amp: [2, 6],   al: [0.35, 0.58], freq: 0.7 },
   { s: [1.6, 2.5],  v: [40, 68],  amp: [7, 16],  al: [0.52, 0.78], freq: 0.9 },
@@ -429,8 +429,8 @@ const FLAYER = [
 ];
 function spawnFlake(i, anywhere) {
   const r = Math.random();
-  // 0.53 tiny, 0.35 medium, 0.12 large (40% fewer large flakes than 0.20)
-  const L = r < 0.53 ? 0 : (r < 0.88 ? 1 : 2);
+  // 0.66 tiny, 0.245 medium (-30%), 0.095 large (-20%) — more tiny flakes overall
+  const L = r < 0.66 ? 0 : (r < 0.905 ? 1 : 2);
   const P = FLAYER[L];
   fl[i] = L;
   fx[i] = Math.random() * (W + 80) - 40;
@@ -697,7 +697,7 @@ function draw() {
     ctx.restore();
   }
 
-  /* evening darkening (+25% darker than previous baseline) */
+  /* evening darkening — 25% darker than the previous baseline (0.164 vs 0.131) */
   if (adj.darken > 0.001) {
     ctx.fillStyle = `rgba(5, 9, 23, ${Math.min(0.28, 0.164 * adj.darken)})`;
     ctx.fillRect(0, 0, W, H);
@@ -710,14 +710,10 @@ function draw() {
     ctx.restore();
   }
 
-  /* moon phase darkened by 50% (preserving the moon inside *-hold.jpg without extra drawn moon) */
+  /* moon phase darkened by exactly 50% — simple black overlay preserves the
+     moon already present inside the *-hold.jpg image without doubling it */
   if (moon > 0.001) {
-    ctx.save();
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = `rgba(88, 106, 152, ${0.50 * moon})`;
-    ctx.fillRect(0, 0, W, H);
-    ctx.restore();
-    ctx.fillStyle = `rgba(4, 7, 18, ${0.32 * moon})`;
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.50 * moon})`;
     ctx.fillRect(0, 0, W, H);
   }
 
