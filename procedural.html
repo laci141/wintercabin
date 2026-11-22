@@ -140,6 +140,14 @@
 
 /* ============================== utilities ============================== */
 
+const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
+const lerp = (a, b, f) => a + (b - a) * f;
+const smooth = f => f * f * (3 - 2 * f);
+function mixC(a, b, f) {
+  return [lerp(a[0], b[0], f) | 0, lerp(a[1], b[1], f) | 0, lerp(a[2], b[2], f) | 0];
+}
+const rgb = (c, a) => a === undefined ? `rgb(${c[0]},${c[1]},${c[2]})` : `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
 function mulberry32(seed) {
   let a = seed >>> 0;
   return function () {
@@ -151,8 +159,6 @@ function mulberry32(seed) {
 }
 
 /* ====== photographic rendering system ====== */
-let photoBG = null, photoFO = null, photoNE = null;
-let bgCtx = null, foCtx = null, neCtx = null;
 let brushShapes = [];
 let brushTintCache = new Map();
 let dabRng = mulberry32(1);
@@ -166,12 +172,12 @@ function initPhotoBrush() {
     const g = c.getContext('2d');
     const rng = mulberry32(500 + s);
     for (let i = 0; i < 5; i++) {
-      const x = 22 + rng()*20, y = 16 + rng()*16, r = 12 + rng()*14;
+      const x = 22 + rng() * 20, y = 16 + rng() * 16, r = 12 + rng() * 14;
       const gr = g.createRadialGradient(x, y, 0, x, y, r);
-      gr.addColorStop(0, `rgba(255,255,255,${0.7 + rng()*0.3})`);
+      gr.addColorStop(0, `rgba(255,255,255,${0.7 + rng() * 0.3})`);
       gr.addColorStop(1, 'rgba(255,255,255,0)');
       g.fillStyle = gr;
-      g.fillRect(x-r, y-r, r*2, r*2);
+      g.fillRect(x - r, y - r, r * 2, r * 2);
     }
     brushShapes.push(c);
   }
@@ -194,88 +200,81 @@ function getBrushTinted(si, col) {
 }
 
 function dab(g, x, y, w, h, rot, col, al) {
-  const b = getBrushTinted((dabRng()*3)|0, col);
+  const b = getBrushTinted((dabRng() * 3) | 0, col);
   g.save();
   g.translate(x, y);
   g.rotate(rot);
   g.globalAlpha = al;
-  g.drawImage(b, -w/2, -h/2, w, h);
+  g.drawImage(b, -w / 2, -h / 2, w, h);
   g.restore();
 }
 
-const pick = (rng, arr) => arr[(rng()*arr.length)|0];
+const pick = (rng, arr) => arr[(rng() * arr.length) | 0];
 
 function paintSpruce(g, cx, baseY, h, seed, hazeF, L, accum, frost, litDir) {
   const rng = mulberry32(seed);
   const topY = baseY - h;
-  const maxR = h*0.27;
+  const maxR = h * 0.27;
   const lit = litDir || (Math.sign(SUNX - cx) || 1);
   const nL = isMobile ? 16 : 26;
   const acc = accum === undefined ? 1 : clamp(accum, 0, 1);
   // trunk showing between the lowest branches
-  const tw = Math.max(2.5, h*0.022);
+  const tw = Math.max(2.5, h * 0.022);
   g.fillStyle = frost ? '#5a5148' : '#3a2a1d';
-  g.fillRect(cx - tw/2, baseY - h*0.16, tw, h*0.16);
+  g.fillRect(cx - tw / 2, baseY - h * 0.16, tw, h * 0.16);
   // dark silhouette mass first
   for (let i = 0; i < nL; i++) {
-    const t = i/(nL-1);
-    const y = topY + h*0.05 + h*0.88*Math.pow(t, 1.06);
-    const rB = maxR*(0.08 + 0.92*Math.pow(t, 0.94));
+    const t = i / (nL - 1);
+    const y = topY + h * 0.05 + h * 0.88 * Math.pow(t, 1.06);
+    const rB = maxR * (0.08 + 0.92 * Math.pow(t, 0.94));
     for (const side of [-1, 1]) {
-      const r = rB*(0.7 + rng()*0.45);
-      const droop = 0.15 + t*0.45;
-      const nD = 3 + (r/10|0);
+      const r = rB * (0.7 + rng() * 0.45);
+      const droop = 0.15 + t * 0.45;
+      const nD = 3 + (r / 10 | 0);
       for (let k = 0; k < nD; k++) {
-        const s = 0.15 + (k/nD)*0.85 + rng()*0.1;
-        const px = cx + side*r*s;
-        const py = y + r*droop*s*s + (rng()-0.5)*3;
+        const s = 0.15 + (k / nD) * 0.85 + rng() * 0.1;
+        const px = cx + side * r * s;
+        const py = y + r * droop * s * s + (rng() - 0.5) * 3;
         let col = mixC(pick(rng, L.tree), L.haze, hazeF);
         if (frost) col = mixC(col, [172, 190, 210], 0.5);
-        dab(g, px, py, 12 + r*0.28 + rng()*7, 7 + rng()*6,
-            side*(0.25 + s*0.4) + (rng()-0.5)*0.2, col, 0.5 + rng()*0.4);
+        dab(g, px, py, 12 + r * 0.28 + rng() * 7, 7 + rng() * 6,
+            side * (0.25 + s * 0.4) + (rng() - 0.5) * 0.2, col, 0.5 + rng() * 0.4);
       }
     }
   }
   // snow load
   for (let i = 0; i < nL; i++) {
-    const t = i/(nL-1);
-    const y = topY + h*0.05 + h*0.88*Math.pow(t, 1.06);
-    const rB = maxR*(0.08 + 0.92*Math.pow(t, 0.94));
+    const t = i / (nL - 1);
+    const y = topY + h * 0.05 + h * 0.88 * Math.pow(t, 1.06);
+    const rB = maxR * (0.08 + 0.92 * Math.pow(t, 0.94));
     for (const side of [-1, 1]) {
-      if (rng() < 0.16 + (1 - acc)*0.55) continue;   // thin cover when freshly shaken
-      const r = rB*(0.7 + rng()*0.4);
-      const droop = 0.15 + t*0.45;
+      if (rng() < 0.16 + (1 - acc) * 0.55) continue;   // thin cover when freshly shaken
+      const r = rB * (0.7 + rng() * 0.4);
+      const droop = 0.15 + t * 0.45;
       const facing = side === lit;
-      const nS = 2 + (r/16|0);
+      const nS = 2 + (r / 16 | 0);
       for (let k = 0; k < nS; k++) {
-        const s = 0.3 + (k/(nS||1))*0.55 + rng()*0.12;
-        const px = cx + side*r*s;
-        const py = y + r*droop*s*s - 2 + (rng()-0.5)*2;
+        const s = 0.3 + (k / (nS || 1)) * 0.55 + rng() * 0.12;
+        const px = cx + side * r * s;
+        const py = y + r * droop * s * s - 2 + (rng() - 0.5) * 2;
         const base = facing ? pick(rng, L.snowLit) : pick(rng, L.snowMid);
-        const col = mixC(base, L.haze, hazeF*0.6);
-        dab(g, px, py, (11 + r*0.34)*(0.55 + 0.45*acc), (6 + rng()*5 + t*3)*(0.5 + 0.5*acc),
-            side*(0.22 + s*0.42), col, (0.55 + rng()*0.4)*(0.4 + 0.6*acc));
+        const col = mixC(base, L.haze, hazeF * 0.6);
+        dab(g, px, py, (11 + r * 0.34) * (0.55 + 0.45 * acc), (6 + rng() * 5 + t * 3) * (0.5 + 0.5 * acc),
+            side * (0.22 + s * 0.42), col, (0.55 + rng() * 0.4) * (0.4 + 0.6 * acc));
         if (rng() < 0.5) {
-          dab(g, px + side*2, py + 5 + rng()*3, 12 + r*0.3, 4 + rng()*3,
-              side*(0.22 + s*0.42), mixC(pick(rng, L.snowShd), L.haze, hazeF*0.5), 0.30 + rng()*0.2);
+          dab(g, px + side * 2, py + 5 + rng() * 3, 12 + r * 0.3, 4 + rng() * 3,
+              side * (0.22 + s * 0.42), mixC(pick(rng, L.snowShd), L.haze, hazeF * 0.5), 0.30 + rng() * 0.2);
         }
         if (facing && rng() < 0.55) {
-          dab(g, px + lit*3, py - 3 - rng()*2, 10 + r*0.22, 3.5 + rng()*2.5,
-              side*(0.2 + s*0.4), mixC(pick(rng, L.snowLit), L.sunGlow, 0.45), 0.4 + rng()*0.3);
+          dab(g, px + lit * 3, py - 3 - rng() * 2, 10 + r * 0.22, 3.5 + rng() * 2.5,
+              side * (0.2 + s * 0.4), mixC(pick(rng, L.snowLit), L.sunGlow, 0.45), 0.4 + rng() * 0.3);
         }
       }
     }
   }
-  dab(g, cx, topY + h*0.02, (12 + h*0.02)*(0.5 + 0.5*acc), 8*(0.5 + 0.5*acc), 0, pick(rng, L.snowMid), 0.9*acc);
-  dab(g, cx + lit*2, topY + h*0.013, 8*(0.5 + 0.5*acc), 5, 0, mixC(L.snowLit[0], L.sunGlow, 0.4), 0.7*acc);
+  dab(g, cx, topY + h * 0.02, (12 + h * 0.02) * (0.5 + 0.5 * acc), 8 * (0.5 + 0.5 * acc), 0, pick(rng, L.snowMid), 0.9 * acc);
+  dab(g, cx + lit * 2, topY + h * 0.013, 8 * (0.5 + 0.5 * acc), 5, 0, mixC(L.snowLit[0], L.sunGlow, 0.4), 0.7 * acc);
 }
-const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
-const lerp = (a, b, f) => a + (b - a) * f;
-const smooth = f => f * f * (3 - 2 * f);
-function mixC(a, b, f) {
-  return [lerp(a[0], b[0], f) | 0, lerp(a[1], b[1], f) | 0, lerp(a[2], b[2], f) | 0];
-}
-const rgb = (c, a) => a === undefined ? `rgb(${c[0]},${c[1]},${c[2]})` : `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 
 /* ============================== scenes ============================== */
 
@@ -317,13 +316,13 @@ let wind = 0, gustEnv = 0, gustDir = 1, gustAmp = 1;
 let gustState = 'idle', gustClock = 0, nextGust = 6;
 const WIND_CFG = { calm: { base: 0.02, gust: 0.30 }, breezy: { base: 0.14, gust: 0.62 }, stormy: { base: 0.40, gust: 1.05 } };
 
-// day/night key stops
+// day/night key stops — balanced evening brightness (150% instead of overly dark 300%)
 const STOPS = [
   { t: 0.00, top: [64, 86, 138],  mid: [233, 158, 106], hor: [255, 214, 158], tint: [255, 246, 238], stars: 0.00, moon: 0.05, night: 0.10, golden: 1.00 },
-  { t: 0.16, top: [30, 38, 82],   mid: [64, 78, 134],   hor: [150, 124, 150], tint: [212, 216, 240], stars: 0.45, moon: 0.55, night: 0.55, golden: 0.25 },
-  { t: 0.34, top: [7, 11, 30],    mid: [15, 23, 52],    hor: [32, 44, 82],    tint: [128, 148, 205], stars: 1.00, moon: 1.00, night: 1.00, golden: 0.00 },
-  { t: 0.62, top: [7, 11, 30],    mid: [15, 23, 52],    hor: [32, 44, 82],    tint: [128, 148, 205], stars: 1.00, moon: 1.00, night: 1.00, golden: 0.00 },
-  { t: 0.80, top: [44, 44, 88],   mid: [120, 86, 124],  hor: [228, 156, 142], tint: [228, 214, 230], stars: 0.30, moon: 0.40, night: 0.50, golden: 0.35 },
+  { t: 0.16, top: [36, 46, 94],   mid: [74, 90, 148],   hor: [162, 136, 162], tint: [222, 226, 246], stars: 0.40, moon: 0.50, night: 0.45, golden: 0.25 },
+  { t: 0.34, top: [15, 23, 54],   mid: [28, 40, 82],    hor: [54, 70, 120],   tint: [128, 148, 205], stars: 0.90, moon: 0.95, night: 0.78, golden: 0.00 },
+  { t: 0.62, top: [15, 23, 54],   mid: [28, 40, 82],    hor: [54, 70, 120],   tint: [128, 148, 205], stars: 0.90, moon: 0.95, night: 0.78, golden: 0.00 },
+  { t: 0.80, top: [48, 50, 96],   mid: [126, 94, 132],  hor: [232, 162, 148], tint: [232, 220, 234], stars: 0.30, moon: 0.40, night: 0.45, golden: 0.35 },
   { t: 0.94, top: [92, 104, 156], mid: [238, 176, 142], hor: [255, 224, 184], tint: [255, 242, 236], stars: 0.00, moon: 0.08, night: 0.12, golden: 0.85 }
 ];
 function evalCycle(u) {
@@ -1095,7 +1094,6 @@ let renderedOnce = false;
 function getPhotoLighting(cyc) {
   // Light model for photographic rendering based on day/night cycle
   // Returns sun position and color palettes
-  const isNight = cyc.night > 0.5;
   const isSunset = cycleT > 0.72 && cycleT < 1.0;
   const isSunrise = cycleT >= 0.0 && cycleT < 0.25;
 
@@ -1185,17 +1183,6 @@ function resize() {
   galViolet = makeSoftSprite(206, 182, 232);
   galBlue = makeSoftSprite(148, 172, 232);
   cloudSprites = [makeCloudSprite(41), makeCloudSprite(42), makeCloudSprite(43)];
-
-  // photographic rendering planes
-  photoBG = document.createElement('canvas');
-  photoBG.width = W; photoBG.height = H;
-  bgCtx = photoBG.getContext('2d');
-  photoFO = document.createElement('canvas');
-  photoFO.width = W; photoFO.height = H;
-  foCtx = photoFO.getContext('2d');
-  photoNE = document.createElement('canvas');
-  photoNE.width = W; photoNE.height = H;
-  neCtx = photoNE.getContext('2d');
 
   brushTintCache.clear();
   initPhotoBrush();
@@ -1731,15 +1718,15 @@ function buildGrain() {
   const rng = mulberry32(7777);
   for (let i = 0; i < d.length; i += 4) {
     const v = 120 + rng() * 16;
-    d[i] = d[i+1] = d[i+2] = v;
-    d[i+3] = 12;
+    d[i] = d[i + 1] = d[i + 2] = v;
+    d[i + 3] = 12;
   }
   g.putImageData(img, 0, 0);
 }
 
 function draw() {
   const cyc = evalCycle(cycleT);
-  const L = getPhotoLighting(cyc);
+  getPhotoLighting(cyc);
 
   /* sky */
   const sky = ctx.createLinearGradient(0, 0, 0, H * 0.78);
