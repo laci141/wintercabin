@@ -980,7 +980,7 @@ windDirAutoCheck.addEventListener('change', () => {
   windDirAuto = windDirAutoCheck.checked;
   windDirSpeedCtl.style.display = windDirAuto ? 'block' : 'none';
   if (windDirAuto) {
-    windDirPhase = Math.asin(clamp(windDirManual, -1, 1));
+    windDirPhase = Math.asin(clamp(windDirOsc, -1, 1));
   } else {
     windDirManual = windDirOsc;
     windDirRange.value = windDirOsc.toFixed(3);
