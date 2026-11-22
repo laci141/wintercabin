@@ -131,9 +131,11 @@
       padding: 0 5px calc(10px + env(safe-area-inset-bottom, 0px));
       transform: translateY(calc(100% - 42px - env(safe-area-inset-bottom, 0px)));
       transition: transform .35s cubic-bezier(.4, 0, .2, 1);
-      max-height: 72vh;
+      max-height: min(72vh, 720px);
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
     }
-    @supports (height: 1dvh) { .glass-panel { max-height: 72dvh; } }
+    @supports (height: 1dvh) { .glass-panel { max-height: min(72dvh, 720px); } }
     .glass-panel.open { transform: none; overflow-y: auto; }
     .glass-panel.closed { display: block; }
     #closeBtn, #openBtn { display: none !important; }
@@ -158,6 +160,16 @@
     .lang-table { border-radius: 9px; }
     .lang-table button { font-size: 11.5px; padding: 9px 0; letter-spacing: .06em; min-height: 40px; }
   }
+
+  /* Cross-browser touch, scroll and focus behaviour */
+  button, input { -webkit-tap-highlight-color: transparent; }
+  button { touch-action: manipulation; }
+  .glass-panel { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .glass-panel button[aria-pressed="true"] { box-shadow: inset 0 0 0 1px rgba(255,212,142,.18); }
+  @media (prefers-reduced-motion: reduce) {
+    .glass-panel, .glass-panel *, #fade { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  }
+
 </style>
 </head>
 <body>
@@ -173,25 +185,25 @@
   <div class="ctl">
     <label><span data-t="language">Nyelv</span></label>
     <div class="lang-table" id="langSeg">
-      <button type="button" data-l="hu" class="on">HU</button>
-      <button type="button" data-l="en">EN</button>
-      <button type="button" data-l="ro">RO</button>
-      <button type="button" data-l="de">DE</button>
+      <button type="button" data-l="hu" class="on" aria-pressed="true">HU</button>
+      <button type="button" data-l="en" aria-pressed="false">EN</button>
+      <button type="button" data-l="ro" aria-pressed="false">RO</button>
+      <button type="button" data-l="de" aria-pressed="false">DE</button>
     </div>
   </div>
 
   <div class="ctl">
     <label><span data-t="series">Fotósorozat</span></label>
     <div class="series-table" id="setSeg">
-      <button type="button" data-s="0" class="on" data-t="series1">Völgy</button>
-      <button type="button" data-s="1" data-t="series2">Patak</button>
-      <button type="button" data-s="2" data-t="series3">Tó</button>
-      <button type="button" data-s="3" data-t="series4">Hegy</button>
+      <button type="button" data-s="0" class="on" aria-pressed="true" data-t="series1">Völgy</button>
+      <button type="button" data-s="1" aria-pressed="false" data-t="series2">Patak</button>
+      <button type="button" data-s="2" aria-pressed="false" data-t="series3">Tó</button>
+      <button type="button" data-s="3" aria-pressed="false" data-t="series4">Hegy</button>
     </div>
   </div>
 
   <div class="ctl">
-    <label for="snowRange"><span data-t="snow">Hóesés</span><span id="snowLabel">Kitartó</span></label>
+    <label for="snowRange"><span data-t="snow">Hóesés</span><span id="snowLabel" aria-live="polite">Kitartó</span></label>
     <input type="range" id="snowRange" min="0" max="1.2" step="0.01" value="0.5">
     <label class="toggle" for="snowAutoToggle" style="margin-top:2px;">
       <input type="checkbox" id="snowAutoToggle"> <span data-t="snowAutoCycle">Auto ciklus</span>
@@ -206,7 +218,7 @@
 
   <div class="ctl">
     <div class="lbl"><span id="timeTitle" data-t="time">Napszak</span>
-      <span id="phaseLabel" style="opacity:.7">Napkelte</span>
+      <span id="phaseLabel" style="opacity:.7" aria-live="polite">Napkelte</span>
       <label class="toggle" for="autoTime"><input type="checkbox" id="autoTime" checked> <span data-t="auto">Auto</span></label>
     </div>
     <input type="range" id="timeRange" aria-labelledby="timeTitle" min="0" max="1" step="0.001" value="0">
@@ -220,9 +232,9 @@
   <div class="ctl">
     <label><span data-t="wind">Szél</span></label>
     <div class="seg" id="windSeg">
-      <button type="button" data-w="calm" data-t="windCalm">Szélcsend</button>
-      <button type="button" data-w="breezy" class="on" data-t="windBreezy">Szellő</button>
-      <button type="button" data-w="stormy" data-t="windStormy">Viharos</button>
+      <button type="button" data-w="calm" aria-pressed="false" data-t="windCalm">Szélcsend</button>
+      <button type="button" data-w="breezy" class="on" aria-pressed="true" data-t="windBreezy">Szellő</button>
+      <button type="button" data-w="stormy" aria-pressed="false" data-t="windStormy">Viharos</button>
     </div>
 
     <div class="lbl" style="margin-top:6px;">
@@ -247,17 +259,17 @@
 
     <div class="ch-list" id="chSliders">
       <div class="ch-row">
-        <button type="button" class="ch-btn on" data-a="wind" data-t="audWind">Szél</button>
+        <button type="button" class="ch-btn on" aria-pressed="true" data-a="wind" data-t="audWind">Szél</button>
         <input type="range" id="windVolRange" min="0" max="100" step="1" value="70" aria-label="Szél hangerő">
         <span class="ch-val" id="windVolVal">70</span>
       </div>
       <div class="ch-row">
-        <button type="button" class="ch-btn on" data-a="fire" data-t="audFire">Tűz</button>
+        <button type="button" class="ch-btn on" aria-pressed="true" data-a="fire" data-t="audFire">Tűz</button>
         <input type="range" id="fireVolRange" min="0" max="100" step="1" value="70" aria-label="Tűz hangerő">
         <span class="ch-val" id="fireVolVal">70</span>
       </div>
       <div class="ch-row">
-        <button type="button" class="ch-btn on" data-a="pad" data-t="audPad">Háttér</button>
+        <button type="button" class="ch-btn on" aria-pressed="true" data-a="pad" data-t="audPad">Háttér</button>
         <input type="range" id="padVolRange" min="0" max="100" step="1" value="70" aria-label="Háttér hangerő">
         <span class="ch-val" id="padVolVal">70</span>
       </div>
@@ -294,7 +306,7 @@ function circularBell(u, centerU, halfWidth) {
 const I18N = {
   hu: {
     _html: 'hu', _handle: 'Vezérlők', _open: 'Vezérlők megnyitása', _close: 'Vezérlők bezárása',
-    photoWarning: 'Nem sikerült betölteni {count} képet. Ellenőrizd az index.html melletti img/ mappát.',
+    photoWarning: '{count} fotó nem tölthető be. Az img/ mappában legyen azonos nevű AVIF, WebP vagy JPG fájl.',
     controls: 'vezérlők', language: 'Nyelv',
     series: 'Fotósorozat',
     series1: 'Völgy', series2: 'Patak', series3: 'Tó', series4: 'Hegy',
@@ -310,7 +322,7 @@ const I18N = {
   },
   en: {
     _html: 'en', _handle: 'Controls', _open: 'Open controls', _close: 'Close controls',
-    photoWarning: 'Could not load {count} photos. Check the img/ folder next to index.html.',
+    photoWarning: '{count} photos could not be loaded. Put matching AVIF, WebP or JPG files in the img/ folder.',
     controls: 'controls', language: 'Language',
     series: 'Photo series',
     series1: 'Valley', series2: 'Stream', series3: 'Lake', series4: 'Mountain',
@@ -326,7 +338,7 @@ const I18N = {
   },
   ro: {
     _html: 'ro', _handle: 'Comenzi', _open: 'Deschide comenzile', _close: 'Închide comenzile',
-    photoWarning: 'Nu s-au putut încărca {count} fotografii. Verifică folderul img/ de lângă index.html.',
+    photoWarning: '{count} fotografii nu s-au putut încărca. Pune fișiere AVIF, WebP sau JPG cu aceleași nume în folderul img/.',
     controls: 'comenzi', language: 'Limbă',
     series: 'Serie foto',
     series1: 'Vale', series2: 'Pârâu', series3: 'Lac', series4: 'Munte',
@@ -342,7 +354,7 @@ const I18N = {
   },
   de: {
     _html: 'de', _handle: 'Regler', _open: 'Regler öffnen', _close: 'Regler schließen',
-    photoWarning: '{count} Fotos konnten nicht geladen werden. Prüfe den Ordner img/ neben index.html.',
+    photoWarning: '{count} Fotos konnten nicht geladen werden. Lege gleichnamige AVIF-, WebP- oder JPG-Dateien in den Ordner img/.',
     controls: 'Regler', language: 'Sprache',
     series: 'Fotoserie',
     series1: 'Tal', series2: 'Bach', series3: 'See', series4: 'Berg',
@@ -369,29 +381,49 @@ const SETS = [
   ['img/d-napkelte.jpg', 'img/d-del.jpg', 'img/d-delutan.jpg', 'img/d-este.jpg', 'img/d-hold.jpg']
 ];
 let setIdx = 0;
-const photos = SETS.map(set => set.map(src => {
-  const im = new Image();
-  im.src = src;
-  return im;
+function imageCandidates(source) {
+  const baseName = source.replace(/\.(?:jpe?g|png|webp|avif)$/i, '');
+  // Keep the same base name; serve the smallest supported asset first.
+  return [`${baseName}.avif`, `${baseName}.webp`, `${baseName}.jpg`];
+}
+function loadImageWithFallback(image, source) {
+  const candidates = imageCandidates(source);
+  return new Promise(resolve => {
+    let candidateIndex = 0;
+    const tryNext = () => {
+      if (candidateIndex >= candidates.length) {
+        image.onload = null;
+        image.onerror = null;
+        resolve({ src: source, ok: false });
+        return;
+      }
+      const candidate = candidates[candidateIndex++];
+      image.onload = () => {
+        image.onload = null;
+        image.onerror = null;
+        resolve({ src: source, loadedAs: candidate, ok: image.naturalWidth > 0 });
+      };
+      image.onerror = tryNext;
+      image.src = candidate;
+    };
+    image.decoding = 'async';
+    tryNext();
+  });
+}
+const photoLoadTasks = [];
+const photos = SETS.map(set => set.map(source => {
+  const image = new Image();
+  image.decoding = 'async';
+  photoLoadTasks.push(loadImageWithFallback(image, source));
+  return image;
 }));
 let photosReady = false;
 let photoFailures = [];
-function waitForImage(im) {
-  return new Promise(resolve => {
-    const finish = () => resolve({ src: im.src, ok: im.naturalWidth > 0 });
-    if (im.complete) {
-      finish();
-      return;
-    }
-    im.addEventListener('load', finish, { once: true });
-    im.addEventListener('error', finish, { once: true });
-  });
-}
-Promise.all(photos.flat().map(waitForImage)).then(results => {
+Promise.all(photoLoadTasks).then(results => {
   photoFailures = results.filter(result => !result.ok).map(result => result.src);
   photosReady = true;
   updatePhotoNotice();
-  needsRender = true;
+  requestRender();
 });
 
 /* ============================== state ============================== */
@@ -520,8 +552,8 @@ function makeSoftSprite() {
 
 function resize() {
   W = window.innerWidth; H = window.innerHeight;
-  dpr = Math.min(2, window.devicePixelRatio || 1);
   isMobile = W < 700;
+  dpr = Math.min(isMobile ? 1.5 : 2, window.devicePixelRatio || 1);
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(H * dpr);
   canvas.style.width = W + 'px';
@@ -531,7 +563,7 @@ function resize() {
   ctx.imageSmoothingQuality = 'high';
   softSprite = makeSoftSprite();
   setActiveFlakes(targetFlakeCount());
-  needsRender = true;
+  requestRender();
 }
 
 /* ============================== wind & gusts ============================== */
@@ -805,16 +837,32 @@ function drawFallbackScene() {
 
 function drawFlakes(night) {
   const boost = 1 + night * 0.28;
+  const horizontalWind = windDirOsc * 0.55 + wind * 0.35;
   ctx.fillStyle = '#ffffff';
-  for (let i = 0; i < activeFlakes; i++) {
-    const L = fl[i];
-    if (L === 2 && softSprite) {
-      const d = fs[i] * 2.2;
-      ctx.globalAlpha = Math.min(1, fo[i] * (1 + night * 0.18));
-      ctx.drawImage(softSprite, fx[i] - d / 2, fy[i] - d / 2, d, d);
-    } else {
-      ctx.globalAlpha = Math.min(1, fo[i] * boost);
-      ctx.fillRect(fx[i], fy[i], fs[i], fs[i]);
+
+  // Draw distant flakes first, then mid-ground and foreground for clear depth.
+  for (let layer = 0; layer < 3; layer++) {
+    for (let i = 0; i < activeFlakes; i++) {
+      if (fl[i] !== layer) continue;
+      if (layer === 2 && softSprite) {
+        const d = fs[i] * 2.4;
+        ctx.globalAlpha = Math.min(1, fo[i] * (1 + night * 0.18));
+        ctx.drawImage(softSprite, fx[i] - d / 2, fy[i] - d / 2, d, d);
+        // Large near flakes pick up a faint horizontal streak in stronger gusts.
+        if (gustEnv > 0.28 && Math.abs(horizontalWind) > 0.16) {
+          const streak = Math.min(12, 2 + gustEnv * 10) * Math.sign(horizontalWind);
+          ctx.globalAlpha = Math.min(0.34, fo[i] * gustEnv * 0.42);
+          ctx.strokeStyle = '#eaf2ff';
+          ctx.lineWidth = Math.max(0.7, fs[i] * 0.28);
+          ctx.beginPath();
+          ctx.moveTo(fx[i] - streak, fy[i] - fs[i] * 0.65);
+          ctx.lineTo(fx[i] + streak, fy[i] + fs[i] * 0.65);
+          ctx.stroke();
+        }
+      } else {
+        ctx.globalAlpha = Math.min(1, fo[i] * boost * (layer === 0 ? 0.82 : 1));
+        ctx.fillRect(fx[i], fy[i], fs[i], fs[i]);
+      }
     }
   }
   ctx.globalAlpha = 1;
@@ -924,9 +972,20 @@ function step(dt) {
 /* ============================== main loop ============================== */
 
 let renderedOnce = false, lastT = 0;
+let frameRequestId = 0;
+let pageActive = !document.hidden;
+function scheduleFrame() {
+  if (!pageActive || frameRequestId) return;
+  frameRequestId = requestAnimationFrame(frame);
+}
+function requestRender() {
+  needsRender = true;
+  scheduleFrame();
+}
 function frame(now) {
-  requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (now - lastT) / 1000 || 0.016);
+  frameRequestId = 0;
+  if (!pageActive) return;
+  const dt = Math.min(0.05, lastT ? (now - lastT) / 1000 : 1 / 60);
   lastT = now;
   if (reduceMotion) {
     updateAudio();
@@ -936,12 +995,34 @@ function frame(now) {
   } else {
     step(dt);
     draw();
+    scheduleFrame();
   }
   if (!renderedOnce && photosReady) {
     renderedOnce = true;
-    requestAnimationFrame(() => fadeEl.classList.add('gone'));
+    requestAnimationFrame(() => { if (pageActive) fadeEl.classList.add('gone'); });
   }
 }
+function pausePageWork() {
+  pageActive = false;
+  if (frameRequestId) cancelAnimationFrame(frameRequestId);
+  frameRequestId = 0;
+  lastT = 0;
+  if (AC && AC.state === 'running') AC.suspend().catch(() => {});
+}
+function resumePageWork() {
+  pageActive = !document.hidden;
+  lastT = 0;
+  if (!pageActive) return;
+  if (audio.on && AC && AC.state === 'suspended') AC.resume().then(updateAudio).catch(() => {});
+  requestRender();
+  if (!reduceMotion) scheduleFrame();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pausePageWork();
+  else resumePageWork();
+});
+window.addEventListener('pagehide', pausePageWork);
+window.addEventListener('pageshow', resumePageWork);
 
 /* ============================== controls ============================== */
 
@@ -980,6 +1061,12 @@ const speedLabel = document.getElementById('speedLabel');
 const closeBtn = document.getElementById('closeBtn');
 const openBtn = document.getElementById('openBtn');
 
+function syncPressedButtons(container, selector, isPressed) {
+  for (const button of container.querySelectorAll(selector)) {
+    button.setAttribute('aria-pressed', String(!!isPressed(button)));
+  }
+}
+
 function updatePhaseLabel() {
   const b = photoBlend(cycleT);
   phaseLabel.textContent = T.phases[b.fade > 0.5 ? b.j : b.i];
@@ -1003,6 +1090,7 @@ function applyLang(code) {
   closeBtn.setAttribute('aria-label', T._close);
   updatePhotoNotice();
   for (const b of langSeg.querySelectorAll('button')) b.classList.toggle('on', b.dataset.l === code);
+  syncPressedButtons(langSeg, 'button', b => b.dataset.l === code);
   updatePhaseLabel();
   updateSnowLabel();
   try { localStorage.setItem('wc-lang', code); } catch (e) { /* private mode */ }
@@ -1014,29 +1102,38 @@ langSeg.addEventListener('click', e => {
   applyLang(btn.dataset.l);
 });
 
+let setSwitchTimer = 0;
+let pendingSetIdx = setIdx;
 setSeg.addEventListener('click', e => {
   const btn = e.target.closest('button');
-  if (!btn || +btn.dataset.s === setIdx) return;
-  for (const x of setSeg.querySelectorAll('button')) x.classList.toggle('on', x === btn);
+  if (!btn) return;
+  const requestedSet = Number(btn.dataset.s);
+  if (!Number.isInteger(requestedSet) || requestedSet < 0 || requestedSet >= SETS.length || requestedSet === pendingSetIdx) return;
+  pendingSetIdx = requestedSet;
+  for (const x of setSeg.querySelectorAll('button')) x.classList.toggle('on', Number(x.dataset.s) === requestedSet);
+  syncPressedButtons(setSeg, 'button', x => Number(x.dataset.s) === requestedSet);
   fadeEl.classList.add('switching');
-  setTimeout(() => {
-    setIdx = +btn.dataset.s;
+  window.clearTimeout(setSwitchTimer);
+  setSwitchTimer = window.setTimeout(() => {
+    setIdx = pendingSetIdx;
     fadeEl.classList.remove('switching');
-    needsRender = true;
+    requestRender();
   }, 300);
 });
 speedRange.addEventListener('input', () => {
   cycleSpeed = parseFloat(speedRange.value);
   speedLabel.textContent = cycleSpeed.toFixed(1) + '×';
-  needsRender = true;
+  requestRender();
 });
 closeBtn.addEventListener('click', () => {
   panel.classList.add('closed');
   openBtn.classList.add('show');
+  handle.setAttribute('aria-expanded', 'false');
 });
 openBtn.addEventListener('click', () => {
   panel.classList.remove('closed');
   openBtn.classList.remove('show');
+  handle.setAttribute('aria-expanded', 'true');
 });
 
 /* --- snow controls --- */
@@ -1049,7 +1146,7 @@ snowRange.addEventListener('input', () => {
   intensity = parseFloat(snowRange.value);
   updateSnowLabel();
   setActiveFlakes(targetFlakeCount());
-  needsRender = true;
+  requestRender();
 });
 snowAutoToggle.addEventListener('change', () => {
   snowAuto = snowAutoToggle.checked;
@@ -1070,12 +1167,12 @@ timeRange.addEventListener('input', () => {
   cycleT = parseFloat(timeRange.value);
   if (autoCycle) { autoCycle = false; autoTime.checked = false; }
   updatePhaseLabel();
-  needsRender = true;
+  requestRender();
 });
 autoTime.addEventListener('change', () => {
   autoCycle = autoTime.checked && !reduceMotion;
   if (reduceMotion) autoTime.checked = false;
-  needsRender = true;
+  requestRender();
 });
 
 /* --- wind mode --- */
@@ -1084,7 +1181,8 @@ windSeg.addEventListener('click', e => {
   if (!btn) return;
   windMode = btn.dataset.w;
   for (const x of windSeg.querySelectorAll('button')) x.classList.toggle('on', x === btn);
-  needsRender = true;
+  syncPressedButtons(windSeg, 'button', x => x === btn);
+  requestRender();
 });
 
 /* --- wind direction --- */
@@ -1099,7 +1197,7 @@ windDirRange.addEventListener('input', () => {
   if (windDirOsc > 0.3) windDirLabel.textContent = '→';
   else if (windDirOsc < -0.3) windDirLabel.textContent = '←';
   else windDirLabel.textContent = '·';
-  needsRender = true;
+  requestRender();
 });
 windDirAutoCheck.addEventListener('change', () => {
   windDirAuto = windDirAutoCheck.checked;
@@ -1150,6 +1248,7 @@ chSliders.addEventListener('click', e => {
   const key = btn.dataset.a;
   audio[key] = !audio[key];
   btn.classList.toggle('on', audio[key]);
+  btn.setAttribute('aria-pressed', String(audio[key]));
   updateAudio();
 });
 handle.addEventListener('click', () => {
@@ -1173,6 +1272,9 @@ if (!I18N[saved]) {
   saved = I18N[nav] ? nav : 'hu';
 }
 applyLang(saved);
+syncPressedButtons(setSeg, 'button', b => Number(b.dataset.s) === setIdx);
+syncPressedButtons(windSeg, 'button', b => b.dataset.w === windMode);
+syncPressedButtons(chSliders, 'button.ch-btn', b => !!audio[b.dataset.a]);
 
 /* initial visibility of the speed sliders */
 windDirSpeedCtl.style.display = windDirAuto ? 'block' : 'none';
@@ -1181,8 +1283,9 @@ windDirSpeedLabel.textContent = windDirSpeed.toFixed(1) + '×';
 snowAutoSpeedLabel.textContent = snowAutoSpeed.toFixed(1) + '×';
 
 resize();
-window.addEventListener('resize', resize);
-requestAnimationFrame(frame);
+window.addEventListener('resize', resize, { passive: true });
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize, { passive: true });
+requestRender();
 
 })();
 </script>
